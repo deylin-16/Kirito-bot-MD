@@ -83,7 +83,6 @@ export async function handler(chatUpdate) {
         global.db.data.settings[settingsJid] ||= {
             self: false,
             restrict: true,
-            jadibotmd: true,
             antiPrivate: false,
             autoread: false,
             soloParaJid: false,
