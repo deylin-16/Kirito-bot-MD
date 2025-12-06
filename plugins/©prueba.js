@@ -6,7 +6,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
     const who = m.messageStubParameters?.[0]
     if (!who) return
 
-    // **** CORRECCIÓN CRÍTICA DE JID PARA COMUNIDADES ****
+    // **** 1. CORRECCIÓN CRÍTICA DEL JID (@lid a @s.whatsapp.net) ****
     let fixedWho = who;
     if (fixedWho.endsWith('@lid')) {
         fixedWho = fixedWho.replace('@lid', '@s.whatsapp.net');
@@ -28,6 +28,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
             
         }
 
+        // El texto de la mención sigue usando el número, ya que el nombre no está disponible por la privacidad de la Comunidad.
         const mentionListText = `@${fixedWho.split("@")[0]}` 
         
         let welcomeText = chat.customWelcome || "hola bienvenido @user"
@@ -37,7 +38,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
 
         try {
             const messageOptions = {
-                // Usamos la JID corregida para la mención
+                // 2. Uso de la JID corregida para la mención TÉCNICA
                 mentions: [fixedWho] 
             }
 
