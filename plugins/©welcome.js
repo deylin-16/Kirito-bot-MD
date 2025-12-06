@@ -7,6 +7,7 @@ export async function before(m, { conn }) {
 
     const chat = global.db?.data?.chats?.[m.chat] || {}
 
+    // SOLUCIÓN: Detección de Adición Directa (ADD) y Aprobación/Unión (JOIN)
     const isWelcomeEvent = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD || 
                            m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_JOIN;
                            
@@ -29,6 +30,7 @@ export async function before(m, { conn }) {
                 mentions: [who]
             }
 
+            // SOLUCIÓN DE IMAGEN: Envía IMAGEN solo si ppGroup es una URL válida.
             if (typeof ppGroup === 'string' && ppGroup.length > 0) {
                 messageOptions.image = { url: ppGroup }
                 messageOptions.caption = finalCaption
@@ -40,6 +42,7 @@ export async function before(m, { conn }) {
 
         } catch (e) {
             
+            // LÓGICA DE REPORTE DE ERROR AL CHAT
             const errorMsg = `❌ *FALLO AL ENVIAR BIENVENIDA*\n\n*Error:* ${e.name}: ${e.message}\n\n⚠️ Esto puede deberse a la falta de permisos del bot (no es Admin) o a que el grupo está en modo 'Solo Admin'.`
             
             console.error("ERROR AL ENVIAR BIENVENIDA (VERIFICAR PERMISOS DEL BOT O FALLA DE CONEXIÓN):", e)
