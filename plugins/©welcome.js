@@ -12,15 +12,6 @@ export async function before(m, { conn }) {
                            
     if (isWelcomeEvent && chat.welcome !== false) {
 
-        let ppGroup = null
-        const ppGroupDefaultUrl = 'https://i.ibb.co/Psj3rJmR/Texto-del-p-rrafo-20251206-140954-0000.png'
-
-        try {
-            ppGroup = await conn.profilePictureUrl(m.chat, 'image')
-        } catch (e) {
-            ppGroup = ppGroupDefaultUrl
-        }
-
         const mentionListText = `@${who.split("@")[0]}` 
         let welcomeText = chat.customWelcome || "bienvenido al grupo @user"
         welcomeText = welcomeText.replace(/\\n/g, '\n')
@@ -31,8 +22,8 @@ export async function before(m, { conn }) {
                 mentions: [who]
             }
 
-            messageOptions.image = { url: ppGroup }
-            messageOptions.caption = finalCaption
+            // Solo enviamos el texto
+            messageOptions.text = finalCaption
 
             await conn.sendMessage(m.chat, messageOptions)
 
