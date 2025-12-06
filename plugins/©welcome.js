@@ -1,8 +1,6 @@
 import { WAMessageStubType } from '@whiskeysockets/baileys'
 import fetch from 'node-fetch'
 
-this.welcomeBatch = this.welcomeBatch || {} 
-
 async function obtenerPais(numero) {
   try {
     let number = numero.replace("@s.whatsapp.net", "")
@@ -23,7 +21,7 @@ async function sendBatchedWelcome(conn, jid) {
     if (!batch || batch.users.length === 0) return
 
     clearTimeout(batch.timer)
-    
+
     const users = batch.users
     const groupMetadata = (await conn.groupMetadata(jid).catch(() => ({}))) || {}
     const chat = global.db?.data?.chats?.[jid] || {}
@@ -34,9 +32,9 @@ async function sendBatchedWelcome(conn, jid) {
     } catch (e) {}
 
     const mentionListText = users.map(jid => `@${jid.split("@")[0]}`).join(', ')
-    
+
     let welcomeText = chat.customWelcome || "bienvenido al grupo @user"
-    
+
     let finalCaption = welcomeText.replace(/@user/g, mentionListText).trim()
 
     try {
@@ -59,16 +57,16 @@ export async function before(m, { conn, participants, groupMetadata }) {
     if (!who) return
 
     const chat = global.db?.data?.chats?.[m.chat] || {}
-    
+
     if (m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD && chat.welcome) {
-        
+
         conn.welcomeBatch = conn.welcomeBatch || {}
         const jid = m.chat
-        
+
         if (!conn.welcomeBatch[jid]) {
             conn.welcomeBatch[jid] = { users: [], timer: null }
         }
-        
+
         if (conn.welcomeBatch[jid].timer) {
             clearTimeout(conn.welcomeBatch[jid].timer)
         }
@@ -76,7 +74,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
         if (!conn.welcomeBatch[jid].users.includes(who)) {
             conn.welcomeBatch[jid].users.push(who)
         }
-        
+
         conn.welcomeBatch[jid].timer = setTimeout(() => {
             sendBatchedWelcome(conn, jid)
         }, 5000)
