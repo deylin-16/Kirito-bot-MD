@@ -6,12 +6,6 @@ export async function before(m, { conn, participants, groupMetadata }) {
     const who = m.messageStubParameters?.[0]
     if (!who) return
 
-    // ** CORRECCIÓN CRÍTICA DE JID: @lid a @s.whatsapp.net **
-    let fixedWho = who;
-    if (fixedWho.endsWith('@lid')) {
-        fixedWho = fixedWho.replace('@lid', '@s.whatsapp.net');
-    }
-
     let img = 'https://i.ibb.co/Psj3rJmR/Texto-del-p-rrafo-20251206-140954-0000.png'
     const chat = global.db?.data?.chats?.[m.chat] || {}
 
@@ -19,9 +13,6 @@ export async function before(m, { conn, participants, groupMetadata }) {
     const isJoin = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_JOIN
     
     if (chat.welcome && (isAdd || isJoin)) {
-        
-        const mentionId = fixedWho ? [fixedWho] : []
-        const taguser = `@${fixedWho.split('@')[0]}` 
 
         let ppGroup = null 
         try {
@@ -29,23 +20,25 @@ export async function before(m, { conn, participants, groupMetadata }) {
         } catch (e) {
             
         }
+
+        const mentionListText = `@${who.split("@")[0]}` 
         
         let welcomeText = chat.customWelcome || "hola bienvenido @user"
         
         welcomeText = welcomeText.replace(/\\n/g, '\n')
-        let finalCaption = welcomeText.replace(/@user/g, taguser) 
+        let finalCaption = welcomeText.replace(/@user/g, mentionListText) 
 
         try {
-            const messageOptions = {
-                contextInfo: { mentionedJid: mentionId }
-            }
+            const messageOptions = {} 
 
             if (typeof ppGroup === 'string' && ppGroup.length > 0) {
                  messageOptions.image = { url: ppGroup }
                  messageOptions.caption = finalCaption
+                 messageOptions.mentions = [who]
             } else {
                  messageOptions.image = { url: img }
                  messageOptions.caption = finalCaption
+                 messageOptions.mentions = [who]
             }
 
             await conn.sendMessage(m.chat, messageOptions)
@@ -57,7 +50,6 @@ export async function before(m, { conn, participants, groupMetadata }) {
             console.error("ERROR AL ENVIAR BIENVENIDA:", e)
             
             try {
-                // Intentar enviar el reporte de error al chat
                 await conn.sendMessage(m.chat, { text: errorMsg })
             } catch (errorReportingFailed) {
                 console.error("FATAL: Falló el envío del mensaje de bienvenida Y el reporte de error.", errorReportingFailed)
