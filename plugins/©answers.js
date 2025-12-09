@@ -244,8 +244,7 @@ let handler = async (m, { conn }) => {
     chat = global.db.data.chats[m.chat]
   }
 
-  if (!chat.autoresponder2) return      
-  if (chat.isBanned) return            
+  
 
 
   let key = Object.keys(respuestas).find(k => k === texto)
