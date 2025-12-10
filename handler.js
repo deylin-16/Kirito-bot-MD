@@ -25,6 +25,7 @@ export async function handler(chatUpdate, store) {
 
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     
+    // Filtro estricto para mensajes que no tienen la estructura básica
     if (!m || !m.key || !m.message) return;
 
     if (m.message) {
@@ -338,18 +339,19 @@ function smsg(conn, m, store) {
 
     let k;
     try {
-        k = m.key ? m.key.id : randomBytes(16).toString('hex').toUpperCase();
+        // Esto puede fallar si m.key es undefined, pero la comprobación está en el handler
+        k = m.key?.id ? m.key.id : randomBytes(16).toString('hex').toUpperCase();
     } catch (e) {
         k = randomBytes(16).toString('hex').toUpperCase();
     }
 
     m.id = k;
     m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
-    m.chat = conn.normalizeJid(m.key.remoteJid);
-    m.fromMe = m.key.fromMe;
-    m.sender = conn.normalizeJid(m.key.fromMe ? conn.user.jid : m.key.participant || m.key.remoteJid);
+    // CORRECCIÓN CLAVE: Acceso seguro a m.key.remoteJid usando ?
+    m.chat = conn.normalizeJid(m.key?.remoteJid || ''); 
+    m.fromMe = m.key?.fromMe;
+    m.sender = conn.normalizeJid(m.key?.fromMe ? conn.user.jid : m.key?.participant || m.key?.remoteJid || '');
     m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
-    // CORRECCIÓN CLAVE: Asegurar que el texto sea una cadena y que mentionedJid sea un array.
     m.text = m.text ? m.text.replace(/[\u200e\u200f]/g, '').trim() : ''; 
     m.mentionedJid = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || []; 
     m.isGroup = m.chat.endsWith('@g.us');
@@ -363,9 +365,9 @@ function smsg(conn, m, store) {
     if (m.quoted) {
         let q = m.quoted;
         q.isBaileys = q.id?.startsWith('BAE5') && q.id?.length === 16;
-        q.chat = conn.normalizeJid(q.key.remoteJid);
-        q.fromMe = q.key.fromMe;
-        q.sender = conn.normalizeJid(q.key.fromMe ? conn.user.jid : q.key.participant || q.key.remoteJid);
+        q.chat = conn.normalizeJid(q.key?.remoteJid || '');
+        q.fromMe = q.key?.fromMe;
+        q.sender = conn.normalizeJid(q.key?.fromMe ? conn.user.jid : q.key?.participant || q.key?.remoteJid || '');
         q.text = q.message?.extendedTextMessage?.text || q.message?.conversation || q.message?.imageMessage?.caption || q.message?.videoMessage?.caption || '';
     }
 
