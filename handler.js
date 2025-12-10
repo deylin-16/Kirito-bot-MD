@@ -25,8 +25,8 @@ export async function handler(chatUpdate, store) {
 
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     
-    // Filtro estricto para mensajes que no tienen la estructura básica
-    if (!m || !m.key || !m.message) return;
+    // FILTRO CLAVE: Si no tiene la estructura básica de key, message o JID remoto, ignorar.
+    if (!m || !m.key || !m.message || !m.key.remoteJid) return;
 
     if (m.message) {
         m.message = (Object.keys(m.message)[0] === 'ephemeralMessage') ? m.message.ephemeralMessage.message : m.message;
@@ -47,6 +47,7 @@ export async function handler(chatUpdate, store) {
     const now = Date.now();
     const lifeTime = 9000;
 
+    // Ya sabemos que m.key existe gracias al filtro de arriba
     const id = m.key.id;
 
     if (conn.processedMessages.has(id)) {
@@ -346,10 +347,9 @@ function smsg(conn, m, store) {
 
     m.id = k;
     m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
-    // CORRECCIÓN CLAVE: Acceso seguro a m.key.remoteJid usando ?
+    // Acceso seguro a m.key
     m.chat = conn.normalizeJid(m.key?.remoteJid || ''); 
     m.fromMe = m.key?.fromMe;
-    // Acceso seguro a m.key para definir el sender
     m.sender = conn.normalizeJid(m.key?.fromMe ? conn.user.jid : m.key?.participant || m.key?.remoteJid || '');
 
     m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
