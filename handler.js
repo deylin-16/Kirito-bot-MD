@@ -405,7 +405,7 @@ function smsg(conn, m, store) {
         m.id = k;
         m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
         
-        const normalizeJidSafe = conn?.normalizeJid || ((jid) => jid);
+        const normalizeJidSafe = (conn?.normalizeJid && typeof conn.normalizeJid === 'function') ? conn.normalizeJid : ((jid) => jid);
 
         const remoteJid = m.key?.remoteJid || '';
         if (!remoteJid || !remoteJid.includes('@')) {
