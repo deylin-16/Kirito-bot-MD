@@ -1,7 +1,7 @@
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '1'
 import './config.js'
 import { watchFile, unwatchFile, readdirSync, unlinkSync, readFileSync, watch } from 'fs'
-import yargs from 'yargs';
+import yargs from 'yargs/yargs';
 import { createRequire } from 'module'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { platform, exit } from 'process'
