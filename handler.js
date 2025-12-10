@@ -146,6 +146,21 @@ export async function handler(chatUpdate, store) {
             return;
         }
     }
+    
+    if (global.db.data == null) return;
+    
+    if (typeof global.db.data.users !== 'object' || global.db.data.users === null) {
+        global.db.data.users = {};
+    }
+    if (typeof global.db.data.chats !== 'object' || global.db.data.chats === null) {
+        global.db.data.chats = {};
+    }
+    if (typeof global.db.data.settings !== 'object' || global.db.data.settings === null) {
+        global.db.data.settings = {};
+    }
+    if (typeof global.db.data.stats !== 'object' || global.db.data.stats === null) {
+        global.db.data.stats = {};
+    }
 
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
