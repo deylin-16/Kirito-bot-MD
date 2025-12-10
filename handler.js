@@ -4,25 +4,20 @@ import path, { join } from 'path';
 import { unwatchFile, watchFile } from 'fs';
 import chalk from 'chalk';
 import ws from 'ws';
-import { randomBytes, createHash } from 'crypto'; // <-- Se añadió createHash
+import { randomBytes, createHash } from 'crypto';
 import fetch from 'node-fetch';
 
 const isNumber = x => typeof x === 'number' && !isNaN(x);
 
-// --- FUNCIÓN DE ENVÍO DE ERRORES ÚNICOS ---
 async function sendUniqueError(conn, error, origin, m) {
     if (typeof global.sentErrors === 'undefined') {
         global.sentErrors = new Set();
     }
     
-    // Extrae y formatea el texto del error
     const errorText = format(error).replace(new RegExp(Object.values(global.APIKeys || {}).join('|'), 'g'), 'Administrador');
-    
-    // Crea un hash único del mensaje de error para evitar repeticiones
     const hash = createHash('sha256').update(errorText).digest('hex');
 
     if (global.sentErrors.has(hash)) {
-        // El error ya fue enviado, saltar
         return;
     }
 
@@ -47,7 +42,6 @@ ${errorText.substring(0, 1500)}
     }
 }
 
-// Función auxiliar para obtener el L-JID si es necesario
 async function getLidFromJid(id, connection) {
     if (id.endsWith('@lid')) return id;
     const res = await connection.onWhatsApp(id).catch(() => []);
@@ -58,17 +52,14 @@ export async function handler(chatUpdate, store) {
     this.uptime = this.uptime || Date.now();
     const conn = this;
 
-    // 1. FILTRO DE CHATUPDATE BÁSICO
     if (!chatUpdate || !chatUpdate.messages || chatUpdate.messages.length === 0) {
         return;
     }
 
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
 
-    // 2. FILTRO DE MENSAJE CRÍTICO (pre-smsg)
     if (!m || !m.key || !m.message || !m.key.remoteJid) return;
 
-    // Manejo de mensajes efímeros y limpieza de caracteres invisibles
     if (m.message) {
         m.message = (Object.keys(m.message)[0] === 'ephemeralMessage') ? m.message.ephemeralMessage.message : m.message;
         if (m.message.extendedTextMessage) {
@@ -76,18 +67,14 @@ export async function handler(chatUpdate, store) {
         }
     }
 
-    // 3. Serialización del mensaje (con máxima seguridad de JID)
     m = smsg(conn, m, store) || m; 
 
-    // 4. FILTRO POST-SMS: Descarta si smsg falló o devolvió un objeto inválido (m == null)
     if (!m) return; 
 
-    // Inicialización de la base de datos
     if (global.db.data == null) {
         await global.loadDatabase();
     }
 
-    // Manejo de mensajes duplicados
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
     const lifeTime = 9000;
@@ -107,18 +94,20 @@ export async function handler(chatUpdate, store) {
         m.exp = 0;
         m.coin = false;
 
-        // --- INICIALIZACIÓN Y VERIFICACIÓN DE JIDS ---
         const senderJid = m.sender;
         const chatJid = m.chat;
         const botJid = conn.user?.jid || ''; 
 
-        // VALIDACIÓN CRÍTICA (Línea que antes fallaba)
         if (!chatJid || !chatJid.includes('@')) {
-            console.error(`JID del chat inválido: ${chatJid}. Mensaje descartado.`);
-            return; 
+             console.error(`JID del chat inválido (REFORZADO): ${chatJid}. Mensaje descartado.`);
+             return; 
         }
-
-        // Inicialización de datos del chat (Línea anterior a la que fallaba)
+        
+        if (!botJid) {
+             console.error('El Bot JID es undefined. No se puede inicializar la configuración.');
+             return;
+        }
+        
         global.db.data.chats[chatJid] ||= {
             isBanned: false,
             sAutoresponder: '',
@@ -138,7 +127,6 @@ export async function handler(chatUpdate, store) {
             per: [],
         };
 
-        // Inicialización de settings globales del bot
         const settingsJid = conn.user.jid;
         global.db.data.settings[settingsJid] ||= {
             self: false,
@@ -154,7 +142,6 @@ export async function handler(chatUpdate, store) {
         const chat = global.db.data.chats[chatJid];
         const settings = global.db.data.settings[settingsJid];
 
-        // Inicialización de datos del usuario
         if (typeof global.db.data.users[senderJid] !== 'object') global.db.data.users[senderJid] = {};
         if (user) {
             if (!('exp' in user) || !isNumber(user.exp)) user.exp = 0;
@@ -164,12 +151,10 @@ export async function handler(chatUpdate, store) {
             global.db.data.users[senderJid] = { exp: 0, coin: 0, muto: false };
         }
 
-        // Detección de Owner/Admins
         const detectwhat = m.sender.includes('@lid') ? '@lid' : '@s.whatsapp.net';
         const isROwner = global.owner.map(([number]) => number.replace(/[^0-9]/g, '') + detectwhat).includes(senderJid);
         const isOwner = isROwner || m.fromMe;
 
-        // Filtros de modo bot
         if (m.isBaileys || opts['nyimak']) return;
         if (!isROwner && opts['self']) return;
         if (opts['swonly'] && m.chat !== 'status@broadcast') return;
@@ -218,14 +203,12 @@ export async function handler(chatUpdate, store) {
         let text = m.text;
         let args = [];
 
-        // --- BUCLE DE PROCESAMIENTO DE PLUGINS ---
         for (const name in global.plugins) {
             const plugin = global.plugins[name];
             if (!plugin || plugin.disabled) continue;
 
             const __filename = join(___dirname, name);
 
-            // Ejecución de plugin.all
             if (typeof plugin.all === 'function') {
                 try {
                     await plugin.all.call(conn, m, {
@@ -239,7 +222,6 @@ export async function handler(chatUpdate, store) {
                 }
             }
 
-            // Restricción de permisos
             if (!opts['restrict'] && plugin.tags && plugin.tags.includes('admin')) {
                 continue;
             }
@@ -289,7 +271,6 @@ export async function handler(chatUpdate, store) {
                 if (!isNewDetection) continue;
             }
 
-            // Ejecución de plugin.before
             if (typeof plugin.before === 'function') {
                 const extraBefore = {
                     match, conn, participants, groupMetadata, user: global.db.data.users[m.sender], isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename
@@ -325,11 +306,9 @@ export async function handler(chatUpdate, store) {
 
             m.plugin = name;
 
-            // Filtros de chat/grupo
             if (chat?.isBanned && !isROwner) return;
             if (chat?.modoadmin && !isOwner && !isROwner && m.isGroup && !isAdmin) return;
 
-            // Verificación de permisos
             const checkPermissions = (perm) => {
                 const permissions = {
                     rowner: isROwner,
@@ -361,19 +340,16 @@ export async function handler(chatUpdate, store) {
                 match, usedPrefix, noPrefix: text, args, command, text, conn, participants, groupMetadata, user: global.db.data.users[m.sender], isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename
             };
 
-            // Ejecución del comando principal con try/catch
             try {
                 await plugin.call(conn, m, extra);
             } catch (e) {
                 m.error = e;
                 console.error(`Error de ejecución en plugin ${name}:`, e);
-                // 🟢 ENVÍO DE ERROR ÚNICO AQUÍ
                 await sendUniqueError(conn, e, `plugin.call: ${name}`, m); 
 
                 const errorText = format(e).replace(new RegExp(Object.values(global.APIKeys).join('|'), 'g'), 'Administrador');
                 m.reply(errorText);
             } finally {
-                // Ejecución de plugin.after
                 if (typeof plugin.after === 'function') {
                     try {
                         await plugin.after.call(conn, m, extra);
@@ -386,12 +362,9 @@ export async function handler(chatUpdate, store) {
         }
 
     } catch (e) {
-        // Captura de errores no controlados en el cuerpo del handler
         console.error('Error no capturado en handler:', e);
-        // 🟢 ENVÍO DE ERROR ÚNICO AQUÍ (Error global del handler)
         await sendUniqueError(conn, e, 'Handler Global', m); 
     } finally {
-        // Lógica de Mutear, XP y Estadísticas
         if (m) {
             const finalUser = global.db.data.users[m.sender];
             if (finalUser) {
@@ -418,7 +391,6 @@ export async function handler(chatUpdate, store) {
     }
 }
 
-// --- FUNCIÓN SMSG (Serializar Mensaje) - MÁXIMA SEGURIDAD ---
 function smsg(conn, m, store) {
     if (!m) return m;
 
@@ -433,10 +405,8 @@ function smsg(conn, m, store) {
         m.id = k;
         m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
         
-        // Uso de una función segura para normalizeJid (previene TypeError si conn es inválido)
         const normalizeJidSafe = conn?.normalizeJid || ((jid) => jid);
 
-        // VALIDACIÓN CRÍTICA: Descartar si no hay JID remoto válido
         const remoteJid = m.key?.remoteJid || '';
         if (!remoteJid || !remoteJid.includes('@')) {
              return null;
@@ -446,7 +416,6 @@ function smsg(conn, m, store) {
         m.fromMe = m.key?.fromMe;
         
         const botJid = conn?.user?.jid || ''; 
-        // Uso de remoteJid como fallback si participant no existe (para mensajes en privado)
         m.sender = normalizeJidSafe(m.key?.fromMe ? botJid : m.key?.participant || remoteJid);
 
         m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
@@ -478,7 +447,6 @@ function smsg(conn, m, store) {
 }
 
 
-// --- FUNCIÓN DFAIL (Respuestas de Fallo) ---
 global.dfail = (type, m, conn) => {
     const messages = {
         rowner: `
@@ -498,7 +466,6 @@ Solo con Deylin-Eliac hablo de eso w.
     }
 };
 
-// --- FUNCIÓN DE WATCH/RECARGA ---
 let file = global.__filename(import.meta.url, true);
 watchFile(file, async () => {
     unwatchFile(file);
