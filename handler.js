@@ -183,6 +183,7 @@ export async function handler(chatUpdate, store) {
     // **Blindaje 3.0 (MODIFICADO): Carga de la DB Forzada**
     if (global.db.data == null) {
         try {
+            // Asumimos que global.loadDatabase existe y es asíncrona.
             await global.loadDatabase();
         } catch (e) {
             console.error("Fallo crítico al cargar la base de datos:", e);
