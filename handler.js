@@ -16,7 +16,7 @@ async function sendUniqueError(conn, error, origin, m) {
     if (typeof global.sentErrors === 'undefined') {
         global.sentErrors = new Set();
     }
-    
+
     let errorText = format(error);
     if (global.APIKeys && Object.values(global.APIKeys).length > 0) {
         const regex = new RegExp(Object.values(global.APIKeys).join('|'), 'g');
@@ -68,7 +68,7 @@ function smsg(conn, m) {
 
         m.id = k;
         m.isBaileys = m.id?.startsWith('BAE5') && m.id?.length === 16;
-        
+
         const normalizeJidSafe = conn?.normalizeJid;
 
         const remoteJid = m.key?.remoteJid || '';
@@ -78,11 +78,11 @@ function smsg(conn, m) {
 
         m.chat = normalizeJidSafe(remoteJid); 
         m.fromMe = m.key?.fromMe;
-        
+
         const botJid = conn?.user?.jid || global.conn?.user?.jid || ''; 
         if (!botJid) {
         }
-        
+
         m.sender = normalizeJidSafe(m.key?.fromMe ? botJid : m.key?.participant || remoteJid);
 
         m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
@@ -117,7 +117,7 @@ function getSafeChatData(jid) {
     if (!global.db || !global.db.data || !global.db.data.chats) {
         return null; 
     }
-    
+
     if (!global.db.data.chats[jid]) {
         global.db.data.chats[jid] = {
             isBanned: false,
@@ -153,7 +153,7 @@ export async function handler(chatUpdate) {
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
 
     if (!m || !m.key || !m.message || !m.key.remoteJid) return;
-    
+
     const botJid = conn.user?.jid; 
     if (!botJid) {
         return; 
@@ -179,9 +179,9 @@ export async function handler(chatUpdate) {
             return;
         }
     }
-    
+
     if (global.db.data == null) return;
-    
+
     global.db.data.users = global.db.data.users || {};
     global.db.data.chats = global.db.data.chats || {};
     global.db.data.settings = global.db.data.settings || {};
@@ -248,7 +248,7 @@ export async function handler(chatUpdate) {
         if (opts['swonly'] && m.chat !== 'status@broadcast') return;
         if (typeof m.text !== 'string') m.text = '';
 
-        // INICIO: LÓGICA DE IMPRESIÓN DE MENSAJES EN CONSOLA (Estilo Sencillo)
+        // INICIO: LÓGICA DE IMPRESIÓN DE MENSAJES EN CONSOLA
         try {
             const groupMetadata = m.isGroup ? (conn.chats[m.chat] || {}).metadata || await conn.groupMetadata(m.chat).catch(_ => null) || {} : {};
             const senderName = m.isGroup ? m.sender.split('@')[0] : await conn.getName(m.sender);
@@ -261,22 +261,22 @@ export async function handler(chatUpdate) {
             const isGroup = m.isGroup;
             const chatLabel = isGroup ? `[G]` : `[P]`;
             const senderNumber = new PhoneNumber('+' + m.sender.replace('@s.whatsapp.net', '')).getNumber('international');
-            
+
             let logText = m.text.replace(/\u200e+/g, '');
             logText = logText.replace(urlRegex({ strict: false }), (url) => chalk.blueBright(url));
-            
+
             const logLine = chalk.bold.hex('#00FFFF')(`[${formattedTime}] `) +
                             chalk.hex('#7FFF00').bold(chatLabel) + ' ' +
                             chalk.hex('#FF4500')(`${chatName ? chatName.substring(0, 15) : 'N/A'}: `) +
                             chalk.hex('#FFFF00')(`${senderName || senderNumber}: `) +
                             (m.isCommand ? chalk.yellow(logText) : logText.substring(0, 60));
-            
+
             console.log(logLine);
-            
+
             if (m.isMedia) {
                 console.log(chalk.cyanBright(`\t\t\t [Tipo: ${m.mtype}]`));
             }
-            
+
         } catch (printError) {
             console.error(chalk.red('Error al imprimir mensaje en consola:', printError));
         }
@@ -287,7 +287,7 @@ export async function handler(chatUpdate) {
 
         if (m.isGroup) {
             groupMetadata = (conn.chats[m.chat] || {}).metadata || await conn.groupMetadata(m.chat).catch(_ => null) || {};
-            
+
             participants = (groupMetadata.participants || []).map(p => ({ 
                 ...p, 
                 id: p.jid, 
@@ -347,7 +347,7 @@ export async function handler(chatUpdate) {
                     await sendUniqueError(conn, e, `plugin.all: ${name}`, m);
                 }
             }
-            
+
             if (!opts['restrict'] && plugin.tags && plugin.tags.includes('admin')) {
                 continue;
             }
@@ -371,7 +371,7 @@ export async function handler(chatUpdate) {
                 const noPrefix = m.text.replace(usedPrefix, '');
                 [command, ...args] = noPrefix.trim().split(/\s+/).filter(v => v);
                 text = args.join(' ');
-                
+
                 if (!command && usedPrefix.length > 0 && Array.isArray(plugin.command) && plugin.command.includes(usedPrefix)) {
                     command = usedPrefix;
                     usedPrefix = '';
