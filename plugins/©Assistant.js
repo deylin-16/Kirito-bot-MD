@@ -8,22 +8,18 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 
 export async function before(m, { conn }) {
     if (!conn.user) return true;
-    
-    // Si el mensaje viene del propio bot o es un mensaje del sistema, salimos.
+
     m.isBot =
         (m.id.startsWith('BAE5') && m.id.length === 16) ||
         (m.id.startsWith('3EB0') && m.id.length === 12) ||
         (m.id.startsWith('3EB0') && (m.id.length === 20 || m.id.length === 22)) ||
         (m.id.startsWith('B24E') && m.id.length === 20);
     if (m.isBot) return true;
-    
+
     let text = m.text || '';
-    
-    // Si el mensaje está vacío (e.g., solo una imagen sin texto), salimos.
+
     if (text.length === 0) return true;
 
-    // Aquí ya no verificamos prefijos, menciones o palabras clave.
-    
     let user = global.db.data.users[m.sender];
     let chat = global.db.data.chats[m.chat];
     let username = m.pushName || 'Usuario'
@@ -36,10 +32,12 @@ Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, inge
         contents: [
             {
                 role: "user",
-                parts: [{ text: text }] // Usamos el texto completo como query
+                parts: [{ text: text }]
             }
         ],
-        systemInstruction: systemInstruction,
+        config: {
+            systemInstruction: systemInstruction
+        },
         tools: [
             {
                 googleSearch: {}
@@ -58,12 +56,12 @@ Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, inge
         });
 
         const data = await res.json();
-        
+
         if (data.error) {
             console.error(`Error de API Gemini: ${data.error.message}`);
             return conn.reply(m.chat, `⚠️ ¡Error de API! Revisión de la clave o cuota: ${data.error.message}`, m);
         }
-        
+
         let result = data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 
         if (result && result.trim().length > 0) {
@@ -77,6 +75,6 @@ Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, inge
         await conn.reply(m.chat, '⚠️ ¡Rayos! No puedo contactar con la nube. Parece que mis antenas felinas están fallando temporalmente.', m);
     }
 
-    return true; // Siempre retornamos true para no interferir con otros manejadores
+    return true;
 
 }
