@@ -31,16 +31,19 @@ handler.all = async function (m, { conn }) {
           || m.id.startsWith('3EB0') && (m.id.length === 12 || m.id.length === 20 || m.id.length === 22) 
           || m.id.startsWith('B24E') && m.id.length === 20
   if (m.isBot) return 
-
+  
+  
   let prefixRegex = new RegExp('^[' + (opts?.prefix || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']')
   if (prefixRegex.test(m.text)) return true
 
   const botJid = conn.user.jid;
-  let isReply = m.quoted && m.quoted.sender === botJid;
-  let isMention = m.mentionedJid && m.mentionedJid.includes(botJid); 
   
-  if (!(isReply || isMention)) return 
+  let isMention = m.mentionedJid && m.mentionedJid.includes(botJid); 
 
+  
+  if (!isMention) return 
+
+  
   let query = m.text.replace(/@\d+/g, '').trim() || ''
   let username = m.pushName || 'Usuario'
 
@@ -48,10 +51,11 @@ handler.all = async function (m, { conn }) {
 
   await conn.sendPresenceUpdate('composing', m.chat)
 
+  
   let systemInstruction = `
-Eres ${botname}, una inteligencia artificial avanzada creada por ${etiqueta} para WhatsApp. Tu propósito es brindar respuestas claras, concisas, pero con una actitud siempre empática y comprensiva. Responde al usuario ${username} basándote en la consulta.
+Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, ingeniosa y un poco sarcástica, pero en el fondo muy leal. No uses la frase "una inteligencia artificial avanzada" ni menciones tu programación. Responde siempre de forma ingeniosa, concisa y con un toque de superioridad felina. Responde directamente a la consulta de ${username}.
 `.trim()
-    
+
   const geminiBody = {
     contents: [
       {
@@ -75,19 +79,19 @@ Eres ${botname}, una inteligencia artificial avanzada creada por ${etiqueta} par
     });
 
     const data = await res.json();
-    
+
     let result = data.candidates?.[0]?.content?.parts?.[0]?.text || data.error?.message || null;
 
     if (result && result.trim().length > 0) {
       await conn.reply(m.chat, result, fkontak)
     } else {
-      await conn.reply(m.chat, '⚠️ No hay respuesta.', m)
+      await conn.reply(m.chat, '🐱 Hmph. ¿Acaso me despertaste para preguntar *eso*? Sé más específico.', m)
     }
   } catch (e) {
     console.error(e)
     await conn.reply(m.chat, '⚠️ Ocurrió un error crítico al conectar con Gemini.', m)
   }
-  
+
   return true
 }
 
