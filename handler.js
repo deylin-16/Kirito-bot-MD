@@ -4,21 +4,20 @@ import path, { join } from 'path';
 import { unwatchFile, watchFile } from 'fs';
 import chalk from 'chalk';
 import ws from 'ws';
-import { randomBytes, createHash } from 'crypto';
-import fetch from 'node-fetch';
 import PhoneNumber from 'awesome-phonenumber';
 import urlRegex from 'url-regex-safe';
 
 // --- Funciones de soporte ---
 
-const isNumber = x => typeof x === 'number' && !isNaN(x);
-
-// Serialización mínima de mensajes (smsg integrado para evitar dependencias)
+// Serialización mínima de mensajes (smsg integrado)
 function minimalSmsg(conn, m) {
     if (!m || !m.key || !m.key.remoteJid) return null;
 
     const botJid = conn.user?.jid || global.conn?.user?.jid || '';
-    if (!botJid) return null;
+    if (!botJid) {
+        console.log(chalk.red('minimalSmsg FALLÓ: JID del bot no disponible.'));
+        return null;
+    }
 
     try {
         m.chat = conn.normalizeJid(m.key.remoteJid);
@@ -26,27 +25,16 @@ function minimalSmsg(conn, m) {
         m.fromMe = m.key.fromMe;
         m.isGroup = m.chat.endsWith('@g.us');
         
-        // Extraer texto de forma segura
         m.text = m.message?.extendedTextMessage?.text || m.message?.conversation || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || '';
         m.text = m.text ? m.text.replace(/[\u200e\u200f]/g, '').trim() : '';
-
-        // Definir si es comando (muy básico, depende del prefijo global)
-        m.isCommand = global.prefix instanceof RegExp ? global.prefix.test(m.text.trim()[0]) : m.text.startsWith(global.prefix);
-
-        // Devolvemos el mensaje enriquecido
+        m.isCommand = (global.prefix instanceof RegExp ? global.prefix.test(m.text.trim()[0]) : m.text.startsWith(global.prefix || '!') ); // Usa '!' como fallback
+        m.isMedia = !!(m.message?.imageMessage || m.message?.videoMessage || m.message?.audioMessage || m.message?.stickerMessage || m.message?.documentMessage);
+        
         return m;
     } catch (e) {
         console.error(chalk.red("Error en serialización mínima (minimalSmsg)"), e);
         return null;
     }
-}
-
-// Inicialización segura de datos de chat (necesaria para el resto del handler)
-function getSafeChatData(jid) {
-    // Implementación segura (reducida)
-    if (!global.db || !global.db.data || !global.db.data.chats) return null;
-    global.db.data.chats[jid] ||= { isBanned: false, modoadmin: false, antiLink: true, welcome: true };
-    return global.db.data.chats[jid];
 }
 
 // --- FUNCIÓN HANDLER PRINCIPAL ---
@@ -60,40 +48,21 @@ export async function handler(chatUpdate) {
 
     if (!m || !m.key || !m.message || !m.key.remoteJid) return;
     
-    // CORRECCIÓN: Evitar que el handler se ejecute si el bot aún no está listo
+    // 1. Verificar si el bot está listo (si no, no hacemos nada)
     if (!conn.user?.jid) return; 
 
     if (m.message) {
         m.message = (Object.keys(m.message)[0] === 'ephemeralMessage') ? m.message.ephemeralMessage.message : m.message;
     }
 
-    // 1. SERIALIZACIÓN MÍNIMA
+    // 2. SERIALIZACIÓN
     m = minimalSmsg(conn, m); 
     if (!m || !m.chat || !m.sender) {
         // console.log(chalk.red('Mensaje descartado después de serialización.'));
         return; 
     } 
-
-    // Carga segura de la base de datos (necesaria para checks)
-    if (global.db.data == null) {
-        try {
-            await global.loadDatabase();
-        } catch (e) {
-            console.error('Error al cargar la DB en Handler:', e);
-            return;
-        }
-    }
-    if (global.db.data == null) return;
     
-    // Inicialización mínima de DB (para evitar errores "is not defined")
-    global.db.data.users = global.db.data.users || {};
-    global.db.data.chats = global.db.data.chats || {};
-    global.db.data.settings = global.db.data.settings || {};
-    global.db.data.stats = global.db.data.stats || {};
-    global.db.data.users[m.sender] ||= {};
-    global.db.data.settings[conn.user.jid] ||= { self: false, restrict: true };
-    
-    // 2. IMPRESIÓN DE MENSAJES EN CONSOLA (PRIORIDAD)
+    // 3. IMPRESIÓN DE MENSAJES EN CONSOLA (DEBE SER LO PRIMERO TRAS SERIALIZAR)
     try {
         const groupMetadata = m.isGroup ? (conn.chats[m.chat] || {}).metadata || await conn.groupMetadata(m.chat).catch(_ => null) || {} : {};
         const senderName = m.isGroup ? m.sender.split('@')[0] : await conn.getName(m.sender).catch(() => 'Usuario');
@@ -120,11 +89,29 @@ export async function handler(chatUpdate) {
         console.error(chalk.red('Error al imprimir mensaje en consola (secundario):'), printError);
     }
     
-    // 3. LÓGICA DE EJECUCIÓN DE PLUGINS (simplificada)
+    // 4. CARGAR E INICIALIZAR LA BASE DE DATOS (REQUERIDO PARA LOS PLUGINS)
+    if (global.db.data == null) {
+        try {
+            await global.loadDatabase();
+        } catch (e) {
+            console.error('Error al cargar la DB:', e);
+            return;
+        }
+    }
+    if (global.db.data == null) return;
+    
+    // Inicialización de datos de usuario/chat si no existen
+    global.db.data.users[m.sender] ||= {};
+    global.db.data.chats[m.chat] ||= { isBanned: false, modoadmin: false, antiLink: true, welcome: true };
+    global.db.data.settings[conn.user.jid] ||= { self: false, restrict: true };
 
-    const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins');
     const user = global.db.data.users[m.sender];
-    const chat = getSafeChatData(m.chat);
+    const chat = global.db.data.chats[m.chat];
+    const settings = global.db.data.settings[conn.user.jid];
+    
+    // 5. LÓGICA DE EJECUCIÓN DE PLUGINS
+    
+    const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins');
     
     let usedPrefix = '';
     let match = null;
@@ -172,25 +159,25 @@ export async function handler(chatUpdate) {
         
         m.plugin = name;
 
-        // Aquí irían todos los checks de permisos (Owner, Admin, Group, Ban, etc.)
-        // Los omitimos por ahora para centrarnos en la ejecución básica
+        // Si el chat está baneado y no es Owner, salimos.
+        const isOwner = ['Aquí debes definir si es Owner'].includes(m.sender); // Esto debe estar definido en tu index.js o config.js
+        if (chat?.isBanned && !isOwner) return;
 
         m.isCommand = true;
         
-        const extra = { match, usedPrefix, noPrefix: text, args, command, text, conn, chat, user };
+        const extra = { match, usedPrefix, noPrefix: text, args, command, text, conn, chat, user, settings };
         
         try {
-            // Ejecución del plugin
             await plugin.call(conn, m, extra);
         } catch (e) {
             m.error = e;
-            console.error(chalk.red(`Error en plugin ${name}:`), e);
+            console.error(chalk.red(`Error en ejecución del plugin ${name}:`), e);
+            // conn.reply(m.chat, `⚠️ Ocurrió un error al ejecutar el comando.`, m); // Puedes descomentar esto si quieres que el bot avise
         }
     }
 }
 
 global.dfail = (type, m, conn) => {
-    // Si tu bot tiene la función dfail, úsala
     const messages = {
         group: `Solo en grupos.`,
         admin: `Solo administradores.`,
