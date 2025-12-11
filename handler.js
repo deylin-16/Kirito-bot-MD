@@ -1,3 +1,4 @@
+import { smsg } from './lib/simple.js';
 import { format } from 'util';
 import { fileURLToPath } from 'url';
 import path, { join } from 'path';
@@ -5,80 +6,6 @@ import { unwatchFile, watchFile } from 'fs';
 import chalk from 'chalk';
 import ws from 'ws';
 import fetch from 'node-fetch';
-
-// Asumimos que 'proto' se importa desde la librería de WhatsApp (Baileys)
-// DEBES ASEGURARTE DE QUE ESTA LÍNEA ES CORRECTA EN TU PROYECTO
-// EJEMPLO:
-// import * as proto from '@whiskeysockets/baileys/WAProto'; 
-// O si tu proyecto usa una versión más simple, podrías necesitar importarla desde el núcleo de Baileys.
-// *** SI NO ESTÁ CORRECTAMENTE IMPORTADO, EL CÓDIGO FALLARÁ EN LA FUNCIÓN smsg. ***
-// Para este ejemplo, solo la defino como comentario.
-
-// ----------------------------------------------------------------------
-// FUNCIÓN smsg INTEGRADA (REEMPLAZA LA IMPORTACIÓN './lib/simple.js')
-// ----------------------------------------------------------------------
-
-// Nota: Debes definir 'proto' si no existe globalmente.
-// Si tu proyecto usa Baileys, 'proto' es la interfaz para WebMessageInfo.
-// DEBES AÑADIR LA IMPORTACIÓN DE 'proto' AQUÍ SI NO ESTÁ GLOBAL.
-
-export function smsg(conn, m, hasParent) {
-    if (!m) return m;
-    // La variable 'proto' DEBE estar definida y contener 'WebMessageInfo'
-    const M = proto.WebMessageInfo; 
-    try {
-        m = M.fromObject(m);
-        m.conn = conn;
-        let protocolMessageKey;
-        if (m.message) {
-            if (m.mtype == "protocolMessage" && m.msg?.key) {
-                protocolMessageKey = m.msg.key;
-                if (protocolMessageKey.remoteJid === "status@broadcast") {
-                    protocolMessageKey.remoteJid = m.chat || "";
-                }
-                if (
-                    !protocolMessageKey.participant ||
-                    protocolMessageKey.participant === "status_me"
-                ) {
-                    protocolMessageKey.participant =
-                        typeof m.sender === "string" ? m.sender : "";
-                }
-                const decodedParticipant =
-                    conn?.decodeJid?.(protocolMessageKey.participant) || "";
-                protocolMessageKey.fromMe =
-                    decodedParticipant === (conn?.user?.id || "");
-                if (
-                    !protocolMessageKey.fromMe &&
-                    protocolMessageKey.remoteJid === (conn?.user?.id || "")
-                ) {
-                    protocolMessageKey.remoteJid =
-                        typeof m.sender === "string" ? m.sender : "";
-                }
-            }
-            if (m.quoted && !m.quoted.mediaMessage) {
-                delete m.quoted.download;
-            }
-        }
-        if (!m.mediaMessage) {
-            delete m.download;
-        }
-        if (protocolMessageKey && m.mtype == "protocolMessage") {
-            try {
-                conn.ev.emit("message.delete", protocolMessageKey);
-            } catch (e) {
-                console.error("Error al emitir message.delete:", e);
-            }
-        }
-        return m;
-    } catch (e) {
-        console.error("Error en smsg:", e);
-        return m;
-    }
-}
-
-// ----------------------------------------------------------------------
-// RESTO DEL CÓDIGO DEL HANDLER
-// ----------------------------------------------------------------------
 
 const isNumber = x => typeof x === 'number' && !isNaN(x);
 
@@ -99,15 +26,12 @@ export async function handler(chatUpdate) {
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     if (!m) return;
 
-    // YA NO SE NECESITA 'import { smsg } from './lib/simple.js';'
-    // AHORA LLAMA A LA FUNCIÓN DEFINIDA ARRIBA
-    m = smsg(conn, m) || m; 
+    m = smsg(conn, m) || m;
     if (!m) return;
 
     if (global.db.data == null) {
         await global.loadDatabase();
     }
-// ... (Resto del código del handler, es idéntico al original) ...
 
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
