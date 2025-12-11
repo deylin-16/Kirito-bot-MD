@@ -65,7 +65,7 @@ export async function handler(chatUpdate) {
             sAutoresponder: '',
             welcome: true,
             autolevelup: false,
-            autoresponder: false,
+            autoresponder: true,
             delete: false,
             autoAceptar: false,
             autoRechazar: false,
