@@ -1,7 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
+import fetch from 'node-fetch';
 import { sticker } from '../lib/sticker.js';
 
-const ai = new GoogleGenAI({}); 
+// **ADVERTENCIA:** Clave de API dura. Reemplaza con tu clave real.
+const GEMINI_API_KEY = 'AIzaSyD1V090ya1hDnW8ODQwdJ9RG5y8qK_Lmx0'; 
+const MODEL_NAME = 'gemini-2.5-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+
 
 export async function before(m, { conn }) {
     if (!conn.user) return true;
@@ -25,19 +29,43 @@ export async function before(m, { conn }) {
 Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, ingeniosa y un poco sarcástica, pero en el fondo muy leal. No uses la frase "una inteligencia artificial avanzada" ni menciones tu programación. Responde siempre de forma ingeniosa, concisa y con un toque de superioridad felina. Responde directamente a la consulta de ${username}.
 `.trim()
 
+    const geminiBody = {
+        // Estructura final corregida para systemInstruction y tools, compatible con fetch.
+        systemInstruction: systemInstruction, 
+        contents: [
+            {
+                role: "user",
+                parts: [{ text: text }]
+            }
+        ],
+        config: { 
+             tools: [
+                 {
+                     googleSearch: {}
+                 }
+             ],
+        }
+    };
+
     try {
         conn.sendPresenceUpdate('composing', m.chat);
         
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [{ role: "user", parts: [{ text: text }] }],
-            config: {
-                systemInstruction: systemInstruction,
-                tools: [{ googleSearch: {} }],
+        const res = await fetch(GEMINI_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             },
+            body: JSON.stringify(geminiBody),
         });
 
-        let result = response.text;
+        const data = await res.json();
+
+        if (data.error) {
+            console.error(`Error de API Gemini: ${data.error.message}`);
+            return conn.reply(m.chat, `⚠️ ¡Error de API! Revisión de la clave o cuota: ${data.error.message}`, m);
+        }
+
+        let result = data.candidates?.[0]?.content?.parts?.[0]?.text || null;
 
         if (result && result.trim().length > 0) {
             await conn.reply(m.chat, result, m);
@@ -46,14 +74,8 @@ Eres Jiji, un gato negro parlante muy listo y con una personalidad cínica, inge
             await conn.reply(m.chat, `🐱 Hmph. No tengo nada inteligente que decir sobre *eso*. Intenta preguntar algo que valga mi tiempo.`, m);
         }
     } catch (e) {
-        let errorMessage = e.message || e.toString();
-        
-        if (errorMessage.includes("API key not valid") || errorMessage.includes("400")) {
-             errorMessage = "Tu clave de API es inválida o la cuota se agotó. Por favor, verifica tu variable de entorno GEMINI_API_KEY.";
-        }
-        
-        console.error(`Error de Gemini (SDK): ${errorMessage}`);
-        await conn.reply(m.chat, `⚠️ ¡Error de Gemini! ${errorMessage}`, m);
+        console.error(`Error de conexión/red con Gemini (Jiji): ${e}`);
+        await conn.reply(m.chat, '⚠️ ¡Rayos! No puedo contactar con la nube. Parece que mis antenas felinas están fallando temporalmente.', m);
     }
 
     return true;
