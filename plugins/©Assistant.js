@@ -21,27 +21,24 @@ handler.all = async function (m, { conn }) {
   if (prefixRegex.test(m.text)) return true
 
   const botJid = conn.user.jid;
+  const botNumber = botJid.split('@')[0];
   
-  // VERIFICACIÓN DE MENCIÓN SIMPLIFICADA Y ROBUSTA
+  // LÓGICA DE DETECCIÓN DE MENCIÓN FINAL Y ROBUSTA
   let isMention = false;
   if (m.text) {
-      // 1. Detección por el número corto del bot
-      const botNumberShort = botJid.split('@')[0].trim();
-      if (m.text.includes(`@${botNumberShort}`)) {
+      // Detección 1: Por el número corto del bot (el formato que aparece en el texto)
+      if (m.text.includes(`@${botNumber}`)) {
           isMention = true;
       }
-      
-      // 2. Detección por JID completa si el framework la proporciona
+      // Detección 2: Usando el array de JIDs mencionadas
       if (m.mentionedJid && m.mentionedJid.includes(botJid)) {
           isMention = true;
       }
   }
 
   if (!isMention) return 
-
-  // Si llegamos aquí, la mención fue detectada.
   
-  let query = m.text.replace(new RegExp(`@${botJid.split('@')[0]}`, 'g'), '').trim() || ''
+  let query = m.text.replace(new RegExp(`@${botNumber}`, 'g'), '').trim() || ''
   query = query.replace(/@\w+\s?/, '').trim() || ''
   let username = m.pushName || 'Usuario'
 
@@ -50,13 +47,13 @@ handler.all = async function (m, { conn }) {
   await conn.sendPresenceUpdate('composing', m.chat)
 
   // -----------------------------------------------------------
-  // PRUEBA DE RESPUESTA PREDEFINIDA SIN API DE GEMINI
+  // PRUEBA DE RESPUESTA PREDEFINIDA (Manteniéndola por seguridad)
   // -----------------------------------------------------------
   if (query.toLowerCase().includes('hola')) {
-      await conn.reply(m.chat, `¡Hmph, ${username}! Te he oído. Prueba de mención EXITOSA y 'Hola' detectado.`, m)
+      await conn.reply(m.chat, `¡Hmph, ${username}! (BOT: ${botNumber}). Detección OK. Es hora de usar la API.`, m)
       return true
   } else {
-      await conn.reply(m.chat, `¡Gato detectado! Mención OK. Escribiste: "${query}".`, m)
+      await conn.reply(m.chat, `¡Mención detectada! (BOT: ${botNumber}). Escribiste: "${query}".`, m)
       return true
   }
   // -----------------------------------------------------------
