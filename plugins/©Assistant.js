@@ -7,20 +7,6 @@ handler.all = async function (m, { conn }) {
   let user = global.db.data.users[m.sender]
   let chat = global.db.data.chats[m.chat]
 
-const res = await fetch(`${kirito}/media/images/87411733_k.jpg`);
-  const thumb2 = Buffer.from(await res.arrayBuffer());
-const userJid = m.sender;
-
-  const fkontak = {
-    key: { fromMe: false, participant: userJid },
-    message: {
-      imageMessage: {
-        mimetype: 'image/jpeg',
-        caption: '𝗥𝗘𝗦𝗣𝗨𝗘𝗦𝗧𝗔 > 𝗕𝗢𝗧',
-        jpegThumbnail: thumb2
-      }
-    }
-  };
 
   m.isBot = m.id.startsWith('BAE5') && m.id.length === 16 
           || m.id.startsWith('3EB0') && (m.id.length === 12 || m.id.length === 20 || m.id.length === 22) 
@@ -58,7 +44,7 @@ Eres ${botname}, una inteligencia artificial avanzada creada por ${etiqueta} par
       const data = await res.json()
       let result = data.result || data.answer || data.response || null
       if (result && result.trim().length > 0) {
-        await this.reply(m.chat, result, fkontak, rcanal)
+        await this.reply(m.chat, result, m)
       }
     } catch (e) {
       console.error(e)
