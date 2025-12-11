@@ -232,11 +232,7 @@ async function connectionUpdate(update) {
         global.isConnecting = false;
 
         if (global.conn.user?.jid && !isHandlerActive) {
-            
-            if (global.conn.ev.listeners('messages.upsert').length === 0) {
-                 // **ESTE BLOQUE YA NO ES NECESARIO AQUÍ. SE MUEVE AL FINAL PARA GARANTIZAR LA EJECUCIÓN.**
-            }
-            
+            // El listener se asigna en reloadHandler
             isHandlerActive = true;
         } else if (!global.conn.user?.jid) {
             setTimeout(() => connectionUpdate(update), 1000);
@@ -326,16 +322,16 @@ global.reloadHandler = async function(restatConn) {
     global.conn.ev.on('connection.update', global.conn.connectionUpdate);
     global.conn.ev.on('creds.update', global.conn.credsUpdate);
     
-    // Corrección para evitar TypeError al recargar el Handler
-if (!isHandlerActive) {
-    global.conn.ev.on('messages.upsert', global.conn.handler);
-    isHandlerActive = true;
-    console.log(chalk.bold.yellowBright('✅ Listener de mensajes asignado al Handler.'));
-}
+    // CORRECCIÓN FINAL: Asignación directa e inmediata del listener de mensajes
+    if (!isHandlerActive) {
+        global.conn.ev.on('messages.upsert', global.conn.handler);
+        isHandlerActive = true;
+        console.log(chalk.bold.yellowBright('✅ Listener de mensajes asignado al Handler.'));
+    }
 
-isInit = false;
-return true;
-
+    isInit = false;
+    return true;
+};
 
 const __dirname = global.__dirname(import.meta.url);
 const pluginFolder = global.__dirname(join(__dirname, './plugins')); 
