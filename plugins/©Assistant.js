@@ -15,7 +15,7 @@ export async function before(m, { conn }) {
     let botNumber = botJid.split('@')[0];
     let text = m.text || '';
 
-    // CONDICIÓN CLAVE: Solo se activa si el JID del bot está en la lista de menciones.
+    // CONDICIÓN ESTRICTA: Solo activar si el JID del bot está en la lista de menciones.
     if (!mentionedJidSafe.includes(botJid)) {
         return true;
     }
@@ -24,14 +24,13 @@ export async function before(m, { conn }) {
 
     let query = text;
 
-    // Eliminamos todas las menciones (por número JID) del texto.
-    // Esto limpia @bot_name, @other_user y cualquier JID en el texto, dejando solo la pregunta.
+    // Eliminamos todas las menciones del texto para obtener solo la pregunta.
     for (let jid of mentionedJidSafe) {
         // Utilizamos una expresión regular para limpiar la mención y el posible espacio siguiente.
         query = query.replace(new RegExp(`@${jid.split('@')[0]}(\\s|$)`, 'g'), ' ').trim();
     }
     
-    // Si aún queda un remanente de @ al inicio (por ej., un espacio extra), lo limpiamos
+    // Si aún queda un remanente de @, lo limpiamos
     query = query.trim();
 
     let username = m.pushName || 'Usuario';
@@ -57,8 +56,10 @@ export async function before(m, { conn }) {
 
         if (result && result.trim().length > 0) {
             
+            // Corrección de formato: Negritas
             result = result.replace(/\*\*(.*?)\*\*/g, '*$1*').trim(); 
             
+            // Corrección de formato: Párrafos
             result = result.replace(/([.?!])\s*/g, '$1\n\n').trim();
 
             await conn.reply(m.chat, result, m);
