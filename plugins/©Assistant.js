@@ -27,7 +27,7 @@ handler.all = async function (m, { conn }) {
     let query = m.text || ''
     let username = m.pushName || 'Usuario'
 
-    let isOrBot = /bot/i.test(query)
+    let isOrBot = /(jiji|gato|asistente)/i.test(query)
     let isReply = m.quoted && m.quoted.sender === this.user.jid
     let isMention = m.mentionedJid && m.mentionedJid.includes(this.user.jid) 
 
@@ -38,7 +38,7 @@ handler.all = async function (m, { conn }) {
     
     let jijiPrompt = `Eres Jiji, un gato negro sarcástico y leal, como el de Kiki: Entregas a Domicilio. Responde a ${username}: ${query}. 
     
-    nota: si vas a resaltar un texto solo usas un * en cada esquina no **.`;
+    nota: si vas a resaltar un texto solo usas un * en cada esquina no ** y separa bien los párrafos y eso.`;
     
     let promptToSend = chat.sAutoresponder ? chat.sAutoresponder : jijiPrompt;
 
@@ -55,8 +55,6 @@ handler.all = async function (m, { conn }) {
 
       if (result && result.trim().length > 0) {
         
-        result = result.replace(/\*\*(.*?)\*\*/g, '*$1*').trim(); 
-        result = result.replace(/([.?!])\s*/g, '$1\n\n').trim();
 
         await this.reply(m.chat, result, m)
       }
