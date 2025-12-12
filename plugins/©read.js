@@ -50,7 +50,8 @@ await m.react('✔️')
 }}
 
 
-handler.command = ['🥺']
+handler.customPrefix = /^(👍)$/i
+handler.command = new RegExp
 handler.rowner = true;
 
 export default handler
