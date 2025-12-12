@@ -1,5 +1,3 @@
-
-
 import { WAMessageStubType } from '@whiskeysockets/baileys'
 import fetch from 'node-fetch'
 
@@ -10,9 +8,15 @@ export async function before(m, { conn, participants, groupMetadata }) {
 
     const totalMembers = participants.length
     const who = m.messageStubParameters?.[0]
-    if (!who) return
+    
+    if (!who) {
+        // En algunos casos de comunidad/solicitudes, who viene vacío. Se ignora.
+        return
+    }
 
-    if (m.messageStubType !== WAMessageStubType.GROUP_PARTICIPANT_ADD) return
+    if (m.messageStubType !== WAMessageStubType.GROUP_PARTICIPANT_ADD && m.messageStubType !== WAMessageStubType.GROUP_CHANGE_MEMBERS) {
+        return
+    }
 
     const chat = global.db.data.chats[m.chat]
     if (!chat?.welcome || !chat?.customWelcome) return
@@ -31,10 +35,15 @@ export async function before(m, { conn, participants, groupMetadata }) {
     }
 
     const welcomeText = chat.customWelcome
-    const finalCaption = welcomeText.replace(/\\n/g, '\n').replace(/@user/g, mentionListText)
+    const nombreDelGrupo = groupMetadata.subject
+    
+    let finalCaption = welcomeText
+        .replace(/\\n/g, '\n')
+        .replace(/@user/g, mentionListText)
+        .replace(/@grupo/g, nombreDelGrupo)
+        .replace(/@total/g, totalMembers)
 
     let fkontak
-    let nombreDelGrupo = groupMetadata.subject
 
     try {
         fkontak = {
@@ -42,7 +51,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
             message: { locationMessage: { name: `BIENVENID@ A _ ${nombreDelGrupo}`} }
         }
     } catch (e) {
-        console.error(e)
+        
     }
 
     const jid = m.chat
