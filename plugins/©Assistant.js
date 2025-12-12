@@ -31,9 +31,7 @@ export async function before(m, { conn }) {
 
     if (query.length === 0) return false;
 
-    let jijiPrompt = `Eres Jiji, un gato negro sarcástico y leal, como el de Kiki: Entregas a Domicilio. Responde a ${username}: ${query} 
-
-nota: si vas a resaltar un texto solo usas un * en cada esquina no ** `;
+    let jijiPrompt = `Eres Jiji, un gato negro sarcástico y leal, como el de Kiki: Entregas a Domicilio. Responde a ${username}: ${query}`;
 
     try {
         conn.sendPresenceUpdate('composing', m.chat);
@@ -46,10 +44,17 @@ nota: si vas a resaltar un texto solo usas un * en cada esquina no ** `;
             throw new Error(`Error HTTP: ${res.status}`);
         }
 
-        const result = await res.text();
+        let result = await res.text();
 
         if (result && result.trim().length > 0) {
-            await conn.reply(m.chat, result.trim(), m);
+            
+            // CORRECCIÓN DE FORMATO 1: Reemplazar doble asterisco por simple para Negrita
+            result = result.replace(/\*\*(.*?)\*\*/g, '*$1*').trim(); 
+            
+            // CORRECCIÓN DE FORMATO 2: Forzar un doble salto de línea (párrafo) después de cada signo de puntuación final (. ? !)
+            result = result.replace(/([.?!])\s*/g, '$1\n\n').trim();
+            
+            await conn.reply(m.chat, result, m);
             await conn.readMessages([m.key]);
         } else {
             await conn.reply(m.chat, `🐱 Hmph. La IA no tiene nada ingenioso que decir sobre *eso*.`, m);
