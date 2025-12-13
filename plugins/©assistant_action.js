@@ -33,7 +33,7 @@ const RESPONSES = {
     REMOVE_OWNER_GROUP: (user) => [`No se puede eliminar al Propietario del grupo: @${user.split('@')[0]}.`, `El creador del grupo no puede ser expulsado: @${user.split('@')[0]}.`, `Acción imposible: @${user.split('@')[0]} es el dueño del grupo.`].map(s => s.replace(/\@/g, '')) ,
     REMOVE_OWNER_BOT: (user) => [`No puedo eliminar al dueño del software: @${user.split('@')[0]}.`, `Protegido: @${user.split('@')[0]} es el propietario del bot.`, `Imposible expulsar al creador del bot: @${user.split('@')[0]}.`].map(s => s.replace(/\@/g, '')) ,
     REMOVE_SUCCESS: (user) => [`El usuario @${user.split('@')[0]} ha sido expulsado del grupo.`, `Expulsión exitosa: @${user.split('@')[0]} ha sido removido.`, `@${user.split('@')[0]} ya no es miembro del grupo.`].map(s => s.replace(/\@/g, '')) ,
-    REMOVE_FAIL: (user) => [`Fallo al intentar expulsar a @${user.split('@')[0]}. Verifique los permisos.`, 'No se pudo remover a @${user.split('@')[0]}. Es posible que ya no esté.', `Error de expulsión para @${user.split('@')[0]}.`],
+    REMOVE_FAIL: (user) => [`Fallo al intentar expulsar a @${user.split('@')[0]}. Verifique los permisos.`, `No se pudo remover a @${user.split('@')[0]}. Es posible que ya no esté.`, `Error de expulsión para @${user.split('@')[0]}.`],
     TAGALL_HEADER: (sender) => [`📢 Aviso importante de @${sender}:`, `🗣️ Mensaje global iniciado por @${sender}:`, `🚨 Notificación general de @${sender}:`],
     TAGALL_DEFAULT: ['📢 ¡Atención a todos los miembros!', '🗣️ Se requiere su atención, por favor.', '🚨 Notificación importante del sistema:'],
     USAGE_HINT: (prefix) => [`Instrucciones de uso:
