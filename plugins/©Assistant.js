@@ -4,7 +4,13 @@ import { webp2png } from '../lib/webp2mp4.js'
 
 const POLLINATIONS_BASE_URL = 'https://text.pollinations.ai';
 
-let handler = m => m
+// CAMBIO SOLICITADO: Define el handler principal como una función asíncrona con los parámetros conn y text
+let handler = async (m, { conn, text }) => {
+    // Este handler principal puede quedar vacío o puede usarse para un comando principal
+    // si 'jiji' no se manejara solo en handler.all.
+    // Dejamos la lógica de 'jiji' en handler.all para no romper la auto-respuesta.
+}
+
 
 const ACTION_SYNONYMS = {
     CLOSE: ['cierra', 'cerrar', 'bloquea', 'mutea', 'silencia', 'tranca', 'ciérralo', 'silencialo', 'modo-admin', 'cerrar-grupo'],
@@ -26,7 +32,6 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
         return true; 
     }
     
-    // Chequeo de que los datos del grupo existan antes de usar .filter
     if (!participants || !groupMetadata) {
         replyFunction('❌ No se pudo cargar la información del grupo. Inténtalo de nuevo.');
         return true; 
@@ -201,7 +206,6 @@ handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, participan
         let username = m.pushName || 'Usuario'
 
         let isOrBot = /(jiji|gato|asistente)/i.test(query)
-        // Usamos conn.user.jid para asegurar que obtenemos el ID del bot
         let isReply = m.quoted && m.quoted.sender === conn.user.jid
         let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
 
