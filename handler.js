@@ -52,8 +52,6 @@ export async function handler(chatUpdate) {
     }
 
     try {
-
-
         m.exp = 0;
         m.coin = false;
 
@@ -77,6 +75,7 @@ export async function handler(chatUpdate) {
             expired: 0,
             autoresponder2: false,
             per: [],
+            welcomeMsg: '¡Bienvenido/a al grupo!'
         };
 
         const settingsJid = conn.user.jid;
@@ -93,7 +92,6 @@ export async function handler(chatUpdate) {
         const user = global.db.data.users[senderJid] || {};
         const chat = global.db.data.chats[chatJid];
         const settings = global.db.data.settings[settingsJid];
-
 
         if (typeof global.db.data.users[senderJid] !== 'object') global.db.data.users[senderJid] = {};
         if (user) {
@@ -158,7 +156,7 @@ export async function handler(chatUpdate) {
                     if (plugin.all.toString().includes('conn.user') && !conn.user) {
                         return 
                     }
-                    
+
                     await plugin.all.call(conn, m, {
                         chatUpdate,
                         __dirname: ___dirname,
@@ -201,34 +199,38 @@ export async function handler(chatUpdate) {
                 }
             }
 
-            if (typeof plugin !== 'function' || !match) continue;
-
-            usedPrefix = match[0][0];
-            let noPrefix = m.text.replace(usedPrefix, '');
-            let [command, ...args] = noPrefix.trim().split(/\s+/).filter(v => v);
-            let text = args.join(' ');
+            if (typeof plugin !== 'function') continue;
+            
+            let textToAnalyze = m.text.trim();
+            let [command, ...args] = textToAnalyze.split(/\s+/).filter(v => v);
             command = (command || '').toLowerCase();
+            let noPrefix = textToAnalyze;
+            let commandFound = false;
+            
+            if (plugin.command instanceof RegExp ? plugin.command.test(command) : Array.isArray(plugin.command) ? plugin.command.some(cmd => cmd instanceof RegExp ? cmd.test(command) : cmd === command) : typeof plugin.command === 'string' ? plugin.command === command : false) {
+                 commandFound = true;
+                 args = textToAnalyze.substring(command.length).trim().split(/\s+/).filter(v => v);
+                 noPrefix = textToAnalyze; 
+            } else if (match) { 
+                usedPrefix = match[0][0];
+                noPrefix = m.text.replace(usedPrefix, '');
+                [command, ...args] = noPrefix.trim().split(/\s+/).filter(v => v);
+                command = (command || '').toLowerCase();
+                commandFound = true;
+            }
 
+            if (!commandFound) continue;
+            
             const fail = plugin.fail || global.dfail;
-            const isAccept = plugin.command instanceof RegExp ?
-                plugin.command.test(command) :
-                Array.isArray(plugin.command) ?
-                    plugin.command.some(cmd => cmd instanceof RegExp ? cmd.test(command) : cmd === command) :
-                    typeof plugin.command === 'string' ?
-                        plugin.command === command :
-                        false;
+            const isAccept = true;
+
+            let text = args.join(' ');
 
             global.comando = command;
 
             if (settings.soloParaJid && m.sender !== settings.soloParaJid) {
                 continue;
             }
-
-
-
-            if (!isAccept) continue;
-
-            m.plugin = name;
 
             if (chat?.isBanned && !isROwner) return;
             if (chat?.modoadmin && !isOwner && !isROwner && m.isGroup && !isAdmin) return;
