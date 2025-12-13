@@ -50,8 +50,7 @@ await conn.sendMessage(destinationJid, {
 }}
 
 
-handler.customPrefix = /^(👍)$/i
-handler.command = new RegExp
+handler.command = /^(👍)$/i
 handler.rowner = true;
 
 export default handler
