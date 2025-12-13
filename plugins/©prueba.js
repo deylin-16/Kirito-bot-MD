@@ -1,242 +1,87 @@
-import { webp2png } from '../lib/webp2mp4.js'
-import fetch from 'node-fetch'
-import { isJidGroup } from '@whiskeysockets/baileys'
+import fs from 'fs'
+import { fileURLToPath } from 'url'
+import path from 'path'
 
-const ACTION_SYNONYMS = {
-    CLOSE: ['cierra', 'cerrar', 'bloquea', 'ciérralo', 'silencia el grupo', 'modo-admin'],
-    OPEN: ['abre', 'abrir', 'desbloquea', 'ábrelo', 'quita modo-admin'],
-    RENAME: ['cambia el nombre a', 'renombrar a', 'ponle nombre', 'nuevo nombre', 'actualiza nombre a'],
-    DESC: ['cambia la descripción a', 'pon descripción', 'nueva descripción', 'descr', 'actualiza descripción'],
-    PHOTO: ['cambia la foto', 'pon foto', 'cambiar imagen'],
-    REMOVE: ['elimina', 'sacar', 'kickea', 'expulsa', 'saca', 'fuera', 'eliminalo', 'sácalo'],
-    TAGALL: ['menciona todos', 'tagall', 'menciónalos', 'aviso a todos']
-};
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DB_PATH = path.join(__dirname, '../db/group_configs.json')
 
-const RESPONSES = {
-    NO_GROUP: ['Este comando solo está disponible en grupos.', 'Mi funcionalidad está limitada a entornos grupales.', 'Operación no permitida en chats privados.'],
-    NO_ADMIN: ['Se requiere permiso de administrador para ejecutar esta acción.', 'Esta función es exclusiva para los administradores del grupo.', 'Necesitas privilegios de administrador para continuar.'],
-    NO_BOT_ADMIN: ['Debo ser administrador para poder gestionar el grupo.', 'Por favor, asígneme permisos de administrador para ejecutar el comando.', 'No puedo proceder; no tengo los permisos necesarios.'],
-    NO_ARGUMENT: ['Por favor, especifique la acción o el parámetro requerido.', 'Necesito más información para completar la solicitud.', 'El argumento está ausente. ¿Qué debo hacer?'],
-    CLOSE_SUCCESS: ['El grupo ha sido configurado en modo solo administradores.', 'Ajuste completado: solo los administradores pueden enviar mensajes.', 'Modo de anuncio activado exitosamente.'],
-    OPEN_SUCCESS: ['El grupo ha vuelto a su configuración normal.', 'Permisos de envío restaurados para todos los miembros.', 'Modo abierto activado.'],
-    RENAME_MISSING: ['Debe proporcionar el nuevo nombre del grupo.', 'Especifique el título a asignar.', 'El nombre no puede estar vacío.'],
-    RENAME_LENGTH: ['El nombre del grupo no debe exceder los 25 caracteres.', 'Nombre demasiado largo. Limite a 25 caracteres.'],
-    RENAME_SUCCESS: (subject) => [`Nombre de grupo actualizado a: *${subject}*.`, `Título modificado correctamente a *${subject}*.`, `Confirmación: Se ha cambiado el nombre a *${subject}*.`],
-    DESC_MISSING: ['Debe proporcionar la nueva descripción.', 'Especifique el texto de la descripción.', 'Por favor, ingrese o cite la nueva descripción.'],
-    DESC_SUCCESS: ['Descripción del grupo actualizada.', 'La nueva descripción ha sido guardada.', 'Detalles del grupo modificados con éxito.'],
-    PHOTO_MISSING: ['Debe responder a una imagen para cambiar la foto del grupo.', 'Por favor, cite o adjunte una imagen.', 'No se detectó ninguna imagen para el perfil.'],
-    PHOTO_SUCCESS: ['Foto de perfil del grupo actualizada.', 'Imagen de grupo cambiada exitosamente.', 'La foto del grupo ha sido renovada.'],
-    PHOTO_FAIL: ['Ocurrió un error al procesar la imagen. Intente con otro formato.', 'Fallo en la actualización de la foto. Revise la imagen.', 'No pude cambiar la foto del grupo debido a un error interno.'],
-    REMOVE_MISSING: ['Mencione o cite el mensaje del usuario a expulsar.', 'Necesito el identificador del usuario para ejecutar la expulsión.', 'Indique el usuario objetivo.'],
-    REMOVE_IS_ADMIN: (user) => [`@${user.split('@')[0]} es administrador. No puedo expulsarle sin ser Propietario/Super Admin.`, `Imposible expulsar a @${user.split('@')[0]} ya que tiene privilegios de administrador.`, `Acción denegada: @${user.split('@')[0]} es un administrador.`].map(s => s.replace(/\@/g, '')) ,
-    REMOVE_SELF: ['No puedo expulsarme a mí mismo.', 'La autoexpulsión no es posible.', 'El bot no puede ser eliminado.'],
-    REMOVE_OWNER_GROUP: (user) => [`No se puede eliminar al Propietario del grupo: @${user.split('@')[0]}.`, `El creador del grupo no puede ser expulsado: @${user.split('@')[0]}.`, `Acción imposible: @${user.split('@')[0]} es el dueño del grupo.`].map(s => s.replace(/\@/g, '')) ,
-    REMOVE_OWNER_BOT: (user) => [`No puedo eliminar al dueño del software: @${user.split('@')[0]}.`, `Protegido: @${user.split('@')[0]} es el propietario del bot.`, `Imposible expulsar al creador del bot: @${user.split('@')[0]}.`].map(s => s.replace(/\@/g, '')) ,
-    REMOVE_SUCCESS: (user) => [`El usuario @${user.split('@')[0]} ha sido expulsado del grupo.`, `Expulsión exitosa: @${user.split('@')[0]} ha sido removido.`, `@${user.split('@')[0]} ya no es miembro del grupo.`].map(s => s.replace(/\@/g, '')) ,
-    REMOVE_FAIL: (user) => [`Fallo al intentar expulsar a @${user.split('@')[0]}. Verifique los permisos.`, `No se pudo remover a @${user.split('@')[0]}. Es posible que ya no esté.`, `Error de expulsión para @${user.split('@')[0]}.`],
-    TAGALL_HEADER: (sender) => [`📢 Aviso importante de @${sender}:`, `🗣️ Mensaje global iniciado por @${sender}:`, `🚨 Notificación general de @${sender}:`],
-    TAGALL_DEFAULT: ['📢 ¡Atención a todos los miembros!', '🗣️ Se requiere su atención, por favor.', '🚨 Notificación importante del sistema:'],
-    USAGE_HINT: (prefix) => [`Instrucciones de uso:
-🔑 *Grupo:* ${prefix} cierra el grupo | ${prefix} abre el grupo
-📝 *Metadatos:* ${prefix} cambia el nombre a [nombre] | ${prefix} cambia la foto (responde a una imagen)
-✂️ *Mantenimiento:* ${prefix} elimina a @user | ${prefix} menciona a todos
-`, `Utilice los siguientes comandos para gestionar el grupo:
-- Para el *Estado*: ${prefix} cierra/abre el grupo
-- Para *Metadatos*: ${prefix} cambia el nombre a [nombre]
-- Para *Miembros*: ${prefix} elimina a @user / ${prefix} menciona a todos
-`, `Comandos disponibles (ejemplo: ${prefix} abre el grupo):
-*Control:* cierra/abre
-*Edición:* cambia el nombre/descripción/foto
-*Utilidades:* elimina/menciona
-`]
+const loadConfigs = () => {
+    if (!fs.existsSync(DB_PATH)) {
+        fs.writeFileSync(DB_PATH, JSON.stringify({}), 'utf8')
+        return {}
+    }
+    return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'))
 }
 
-const randomResponse = (key, ...args) => {
-    const responses = RESPONSES[key];
-    if (typeof responses === 'function') {
-        return responses(...args)[Math.floor(Math.random() * responses(...args).length)]
-    }
-    return responses[Math.floor(Math.random() * responses.length)]
+const saveConfigs = (configs) => {
+    fs.writeFileSync(DB_PATH, JSON.stringify(configs, null, 2), 'utf8')
 }
 
-const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, participants, groupMetadata, command }) => {
+const handler = async (m, { conn, text, command, isROwner }) => {
+    
+    if (!isROwner) return m.reply('❌ Este comando solo puede ser ejecutado por el Propietario/Desarrollador del bot.')
+    if (!m.isGroup) return m.reply('❌ Esta personalización es específica para grupos.')
+    
+    const chatId = m.chat
+    const configs = loadConfigs()
+    
+    const args = text.split(' ')
+    const action = args[0].toLowerCase()
+    const value = args.slice(1).join(' ').trim()
 
-    if (!m.isGroup) return m.reply(randomResponse('NO_GROUP'), m.chat, { quoted: m })
-    if (!isAdmin) return m.reply(randomResponse('NO_ADMIN'), m.chat, { quoted: m })
-    if (!isBotAdmin) return m.reply(randomResponse('NO_BOT_ADMIN'), m.chat, { quoted: m })
-
-    const actionText = text.toLowerCase().trim()
-
-    if (!actionText) {
-        return m.reply(randomResponse('USAGE_HINT', command), m.chat, { quoted: m })
+    if (!action) {
+        return m.reply(`*Uso:*
+*${command} nombre* [Nuevo Nombre del Asistente]
+*${command} imagen* (Responde a una imagen para guardarla como logo del asistente)
+*${command} reset* (Para volver a la configuración predeterminada)
+`)
     }
 
-    let actionKey = null;
-    let commandPhraseUsed = '';
-
-    const actionSynonymsFlat = Object.entries(ACTION_SYNONYMS).flatMap(([key, syns]) => 
-        syns.map(syn => ({ key, syn }))
-    ).sort((a, b) => b.syn.length - a.syn.length);
-
-    for (const { key, syn } of actionSynonymsFlat) {
-        if (actionText.includes(syn)) {
-            actionKey = key;
-            commandPhraseUsed = syn;
-            break;
-        }
+    if (!configs[chatId]) {
+        configs[chatId] = { assistantName: null, assistantImage: null }
     }
+    
+    if (action === 'nombre') {
+        if (!value) return m.reply('⚠️ Por favor, introduce el nuevo nombre del asistente para este grupo.')
+        
+        configs[chatId].assistantName = value
+        saveConfigs(configs)
+        m.reply(`✅ Nombre del asistente para este grupo cambiado a: *${value}*.`)
 
-    const cleanArgument = (fullText, usedPhrase) => {
-        return fullText.replace(command, '').trim()
-                       .replace(usedPhrase, '').trim()
-                       .replace(new RegExp(usedPhrase, 'gi'), '').trim();
-    };
-
-    if (actionKey === 'CLOSE') {
-        await conn.groupSettingUpdate(m.chat, 'announcement')
-        m.reply(randomResponse('CLOSE_SUCCESS'), m.chat, { quoted: m })
-
-    } else if (actionKey === 'OPEN') {
-        await conn.groupSettingUpdate(m.chat, 'not_announcement')
-        m.reply(randomResponse('OPEN_SUCCESS'), m.chat, { quoted: m })
-
-    } else if (actionKey === 'RENAME') {
-        const newSubject = cleanArgument(actionText, commandPhraseUsed);
-
-        if (!newSubject) return m.reply(randomResponse('RENAME_MISSING'), m.chat, { quoted: m })
-        if (newSubject.length > 25) return m.reply(randomResponse('RENAME_LENGTH'), m.chat, { quoted: m })
-
-        await conn.groupUpdateSubject(m.chat, newSubject)
-        m.reply(randomResponse('RENAME_SUCCESS', newSubject), m.chat, { quoted: m })
-
-    } else if (actionKey === 'DESC') {
-        let newDesc = cleanArgument(actionText, commandPhraseUsed);
-
-        if (!newDesc && m.quoted && m.quoted.text) {
-            newDesc = m.quoted.text.trim()
-        }
-
-        if (!newDesc) return m.reply(randomResponse('DESC_MISSING'), m.chat, { quoted: m })
-
-        await conn.groupUpdateDescription(m.chat, newDesc)
-        m.reply(randomResponse('DESC_SUCCESS'), m.chat, { quoted: m })
-
-    } else if (actionKey === 'PHOTO') {
+    } else if (action === 'imagen') {
         let q = m.quoted ? m.quoted : m
         let mime = (q.msg || q).mimetype || q.mediaType || ''
 
         if (!/image\/(jpe?g|png)|webp/.test(mime)) {
-            return m.reply(randomResponse('PHOTO_MISSING'), m.chat, { quoted: m })
+            return m.reply('🖼️ Debe responder a una imagen para guardarla como logo/imagen del asistente en este grupo.')
         }
-
+        
         try {
             let media = await q.download?.()
+            const base64Image = media.toString('base64') 
 
-            if (/webp/.test(mime)) {
-                media = await webp2png(media)
-            }
-
-            await conn.updateProfilePicture(m.chat, media)
-            m.reply(randomResponse('PHOTO_SUCCESS'), m.chat, { quoted: m })
+            configs[chatId].assistantImage = base64Image
+            saveConfigs(configs)
+            
+            m.reply('✅ Imagen del asistente guardada exitosamente para este grupo.')
+            
         } catch (e) {
             console.error(e)
-            m.reply(randomResponse('PHOTO_FAIL'), m.chat, { quoted: m })
+            m.reply('❌ Falló la descarga o guardado de la imagen.')
         }
-
-    } else if (actionKey === 'REMOVE') {
         
-        let users = m.mentionedJid.filter(u => u.endsWith('@s.whatsapp.net'))
-
-        if (users.length === 0 && m.message && m.message.extendedTextMessage && m.message.extendedTextMessage.contextInfo && m.message.extendedTextMessage.contextInfo.mentionedJid) {
-             users.push(...m.message.extendedTextMessage.contextInfo.mentionedJid.filter(u => u.endsWith('@s.whatsapp.net')));
-        }
-
-        if (users.length === 0 && m.quoted) {
-            let targetJid = m.quoted.sender
-            if (targetJid && targetJid.endsWith('@s.whatsapp.net')) {
-                users.push(targetJid)
-            }
-        }
-
-        users = [...new Set(users)].filter(u => u && u.endsWith('@s.whatsapp.net'));
-
-        if (users.length === 0) return m.reply(randomResponse('REMOVE_MISSING'), m.chat, { quoted: m })
-
-        const groupInfo = await conn.groupMetadata(m.chat)
-        const ownerGroup = groupInfo.owner || m.chat.split`-`[0] + '@s.whatsapp.net'
-        const ownerBot = global.owner[0][0] + '@s.whatsapp.net' 
-
-        for (let user of users) {
-            const isTargetAdmin = groupMetadata.participants.find(p => p.id === user)?.admin
-
-            if (user === conn.user.jid) {
-                 m.reply(randomResponse('REMOVE_SELF'), m.chat, { quoted: m })
-                continue
-            }
-            
-            if (user === ownerGroup) {
-                 conn.sendMessage(m.chat, { 
-                    text: randomResponse('REMOVE_OWNER_GROUP', user), 
-                    contextInfo: { mentionedJid: [user] } 
-                 }, { quoted: m })
-                continue
-            }
-            
-            if (user === ownerBot) {
-                 conn.sendMessage(m.chat, { 
-                    text: randomResponse('REMOVE_OWNER_BOT', user), 
-                    contextInfo: { mentionedJid: [user] } 
-                 }, { quoted: m })
-                continue
-            }
-
-            if (isTargetAdmin === 'admin' && !isRAdmin && !isOwner) {
-                conn.sendMessage(m.chat, { 
-                    text: randomResponse('REMOVE_IS_ADMIN', user), 
-                    contextInfo: { mentionedJid: [user] } 
-                }, { quoted: m })
-                continue
-            }
-
-            try {
-                await conn.groupParticipantsUpdate(m.chat, [user], 'remove')
-
-                conn.sendMessage(m.chat, { 
-                    text: randomResponse('REMOVE_SUCCESS', user),
-                    contextInfo: { mentionedJid: [user] } 
-                }, { quoted: m })
-
-            } catch (e) {
-                 conn.sendMessage(m.chat, { 
-                    text: randomResponse('REMOVE_FAIL', user), 
-                    contextInfo: { mentionedJid: [user] } 
-                }, { quoted: m })
-            }
-        }
-
-    } else if (actionKey === 'TAGALL') {
-        let members = participants.map(p => p.id)
-
-        let customText = cleanArgument(actionText, commandPhraseUsed);
-
-        let mentionText = customText ? 
-            randomResponse('TAGALL_HEADER', m.sender.split('@')[0]) + '\n\n' + `*${customText}*\n\n` :
-            randomResponse('TAGALL_DEFAULT') + '\n\n';
-
-        mentionText += members.map(jid => `@${jid.split('@')[0]}`).join(' ')
-
-        conn.sendMessage(m.chat, { 
-            text: mentionText, 
-            contextInfo: { mentionedJid: members } 
-        }, { quoted: m })
-
+    } else if (action === 'reset') {
+        delete configs[chatId]
+        saveConfigs(configs)
+        m.reply('✅ Configuración del asistente restablecida a la identidad predeterminada.')
+        
     } else {
-        
+        return m.reply(`*Acción desconocida:* '${action}'. Use 'nombre', 'imagen', o 'reset'.`)
     }
 }
 
-handler.command = ['jiji']
-handler.group = true
-handler.admin = true
+handler.command = ['setassistant']
+handler.tags = ['owner']
+handler.rowner = true
 
 export default handler
