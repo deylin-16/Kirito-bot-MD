@@ -1,4 +1,4 @@
-import { webp2png } from './lib/webp2mp4.js'
+import { webp2png } from '../lib/webp2mp4.js'
 import fetch from 'node-fetch'
 import { isJidGroup } from '@whiskeysockets/baileys'
 
