@@ -143,7 +143,7 @@ export async function handler(chatUpdate) {
         }
 
         const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins');
-        let usedPrefix = '';
+        let usedPrefix = ''; // Siempre vacío al no usar prefijo
 
         for (const name in global.plugins) {
             const plugin = global.plugins[name];
@@ -174,25 +174,9 @@ export async function handler(chatUpdate) {
                 continue;
             }
 
-            const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
-            let _prefix = plugin.customPrefix ? plugin.customPrefix : conn.prefix ? conn.prefix : global.prefix;
-
-            const match = (
-                _prefix instanceof RegExp ?
-                    [[_prefix.exec(m.text), _prefix]] :
-                    Array.isArray(_prefix) ?
-                        _prefix.map(p => {
-                            const re = p instanceof RegExp ? p : new RegExp(str2Regex(p));
-                            return [re.exec(m.text), re];
-                        }) :
-                        typeof _prefix === 'string' ?
-                            [[new RegExp(str2Regex(_prefix)).exec(m.text), new RegExp(str2Regex(_prefix))]] :
-                            [[[], new RegExp()]]
-            ).find(p => p[0]);
-
             if (typeof plugin.before === 'function') {
                 const extraBefore = {
-                    match, conn, participants, groupMetadata, user: global.db.data.users[m.sender], isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename
+                    conn, participants, groupMetadata, user: global.db.data.users[m.sender], isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename
                 };
                 if (await plugin.before.call(conn, m, extraBefore)) {
                     continue;
@@ -200,32 +184,39 @@ export async function handler(chatUpdate) {
             }
 
             if (typeof plugin !== 'function') continue;
-            
-            let textToAnalyze = m.text.trim();
-            let [command, ...args] = textToAnalyze.split(/\s+/).filter(v => v);
-            command = (command || '').toLowerCase();
-            let noPrefix = textToAnalyze;
-            let commandFound = false;
-            
-            if (plugin.command instanceof RegExp ? plugin.command.test(command) : Array.isArray(plugin.command) ? plugin.command.some(cmd => cmd instanceof RegExp ? cmd.test(command) : cmd === command) : typeof plugin.command === 'string' ? plugin.command === command : false) {
-                 commandFound = true;
-                 args = textToAnalyze.substring(command.length).trim().split(/\s+/).filter(v => v);
-                 noPrefix = textToAnalyze; 
-            } else if (match) { 
-                usedPrefix = match[0][0];
-                noPrefix = m.text.replace(usedPrefix, '');
-                [command, ...args] = noPrefix.trim().split(/\s+/).filter(v => v);
-                command = (command || '').toLowerCase();
-                commandFound = true;
-            }
 
-            if (!commandFound) continue;
+            // --- Lógica de Detección de Comando SIN PREFIJO ---
+            let noPrefix = m.text.trim();
+            if (noPrefix.length === 0) continue; 
+            
+            let [command, ...args] = noPrefix.split(/\s+/).filter(v => v);
+            command = (command || '').toLowerCase();
+            
+            const isAccept = plugin.command instanceof RegExp ?
+                plugin.command.test(command) :
+                Array.isArray(plugin.command) ?
+                    plugin.command.some(cmd => cmd instanceof RegExp ? cmd.test(command) : cmd === command) :
+                    typeof plugin.command === 'string' ?
+                        plugin.command === command :
+                        false;
+
+            if (!isAccept) continue;
+            
+            // Si el comando coincide, ajustamos noPrefix y text
+            noPrefix = m.text.trim().substring(command.length).trim();
+            let text = args.join(' ');
+            
+            // Aseguramos que 'args' contenga todo lo que va después del comando
+            if (noPrefix.length > 0) {
+               args = noPrefix.split(/\s+/).filter(v => v);
+            } else {
+               args = [];
+            }
+            // --- FIN Lógica de Detección de Comando SIN PREFIJO ---
+
+            m.plugin = name;
             
             const fail = plugin.fail || global.dfail;
-            const isAccept = true;
-
-            let text = args.join(' ');
-
             global.comando = command;
 
             if (settings.soloParaJid && m.sender !== settings.soloParaJid) {
@@ -261,7 +252,7 @@ export async function handler(chatUpdate) {
             m.exp += xp;
 
             const extra = {
-                match, usedPrefix, noPrefix, args, command, text, conn, participants, groupMetadata, user: global.db.data.users[m.sender], isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename
+                usedPrefix, noPrefix, args, command, text, conn, participants, groupMetadata, user: global.db.data.users[m.sender], isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename
             };
 
             try {
