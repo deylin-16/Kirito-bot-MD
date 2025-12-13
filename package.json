@@ -50,6 +50,7 @@
 "performance-now": "^2.1.0",
 "pino": "^8.6.1",
 "qrcode": "^1.5.1",
+"jsdom": "^20.0.1",
 "syntax-error": "^1.4.0",
 "terminal-image": "^2.0.0",
 "url-regex-safe": "^3.0.0",
