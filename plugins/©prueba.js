@@ -121,6 +121,5 @@ let handler = async (m, { conn, text, args, isROwner, isOwner, isRAdmin, isAdmin
 handler.command = ['jiji']
 handler.group = true
 handler.admin = true
-handler.tags = ['admin']
 
 export default handler
