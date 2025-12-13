@@ -19,8 +19,10 @@ handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, participan
     let [mainCommand] = (m.text || '').trim().toLowerCase().split(/\s+/);
     
     if (mainCommand === 'jiji') {
-        const commandParams = { isROwner, isOwner, isRAdmin, participants, groupMetadata, command: 'jiji' };
-        const executedAction = await handleJijiCommand(m, conn, commandParams); 
+        // **CORRECCIÓN AQUÍ:** Pasar todos los parámetros desestructurados en un objeto
+        // ya que handleJijiCommand ahora espera esa estructura.
+        const commandParams = { conn, isROwner, isOwner, isRAdmin, participants, groupMetadata, command: 'jiji' };
+        const executedAction = await handleJijiCommand(m, commandParams); 
         if (executedAction) return true; 
     }
 
