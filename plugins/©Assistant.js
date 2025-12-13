@@ -17,14 +17,18 @@ const ACTION_SYNONYMS = {
 };
 
 async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, participants, groupMetadata, command }) {
+    // Si la función m.reply está disponible en el framework, la usamos por simplicidad
+    // Si no, recurrimos a conn.reply(m.chat, ...)
+    const replyFunction = m.reply || ((text, quote, options) => conn.reply(m.chat, text, quote || m, options));
+
     if (!m.isGroup) {
-        conn.reply(m.chat, '😒 ¿De verdad esperabas que hiciera algo en privado? Solo sirvo para grupos.', m);
+        replyFunction('😒 ¿De verdad esperabas que hiciera algo en privado? Solo sirvo para grupos.');
         return true; 
     }
     
     // Chequeo de que los datos del grupo existan antes de usar .filter
     if (!participants || !groupMetadata) {
-        conn.reply(m.chat, '❌ No se pudo cargar la información del grupo. Inténtalo de nuevo.', m);
+        replyFunction('❌ No se pudo cargar la información del grupo. Inténtalo de nuevo.');
         return true; 
     }
 
@@ -35,18 +39,18 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
     // ----------------------------
 
     if (!isAdmin) {
-        conn.reply(m.chat, '😼 Te crees importante, ¿verdad? Solo hablo con los administradores, humano.', m);
+        replyFunction('😼 Te crees importante, ¿verdad? Solo hablo con los administradores, humano.');
         return true; 
     }
     
     if (!isBotAdmin) {
-        conn.reply(m.chat, '🙄 Soy un gato ocupado. Necesito ser administrador para molestarte y hacer estas cosas. ¡Arregla eso!', m);
+        replyFunction('🙄 Soy un gato ocupado. Necesito ser administrador para molestarte y hacer estas cosas. ¡Arregla eso!');
         return true; 
     }
 
     let actionText = m.text.substring(command.length).toLowerCase().trim()
     if (!actionText) {
-        conn.reply(m.chat, `*Instrucciones de Jiji. No me hagas repetirlo:*\n\n🔑 *Grupo:* jiji cierra el grupo | jiji abre el grupo\n📝 *Metadatos:* jiji cambia el nombre a [nombre] | jiji cambia la foto (responde a una imagen)\n✂️ *Mantenimiento:* jiji elimina a @user | jiji menciona a todos`, m);
+        replyFunction(`*Instrucciones de Jiji. No me hagas repetirlo:*\n\n🔑 *Grupo:* jiji cierra el grupo | jiji abre el grupo\n📝 *Metadatos:* jiji cambia el nombre a [nombre] | jiji cambia la foto (responde a una imagen)\n✂️ *Mantenimiento:* jiji elimina a @user | jiji menciona a todos`);
         return true;
     }
 
@@ -55,28 +59,28 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
 
     if (ACTION_SYNONYMS.CLOSE.some(syn => actionWords.includes(syn))) {
         await conn.groupSettingUpdate(m.chat, 'announcement')
-        conn.reply(m.chat, '🔒 Hecho. Silencio total. Ahora, hazme caso.', m)
+        replyFunction('🔒 Hecho. Silencio total. Ahora, hazme caso.')
         actionExecuted = true;
 
     } else if (ACTION_SYNONYMS.OPEN.some(syn => actionWords.includes(syn))) {
         await conn.groupSettingUpdate(m.chat, 'not_announcement')
-        conn.reply(m.chat, '🔓 ¡Qué fastidio! Grupo abierto. Que empiece el ruido.', m)
+        replyFunction('🔓 ¡Qué fastidio! Grupo abierto. Que empiece el ruido.')
         actionExecuted = true;
 
     } else if (ACTION_SYNONYMS.RENAME.some(syn => actionWords.includes(syn))) {
         let newSubject = actionText.replace(new RegExp(ACTION_SYNONYMS.RENAME.join('|'), 'gi'), '').trim()
         
         if (!newSubject) {
-            conn.reply(m.chat, '😒 ¿Acaso esperas que adivine el nombre? Dímelo.', m);
+            replyFunction('😒 ¿Acaso esperas que adivine el nombre? Dímelo.');
             return true;
         }
         if (newSubject.length > 25) {
-            conn.reply(m.chat, '🙄 El nombre no es una novela. Menos de 25 caracteres.', m);
+            replyFunction('🙄 El nombre no es una novela. Menos de 25 caracteres.');
             return true;
         }
 
         await conn.groupUpdateSubject(m.chat, newSubject)
-        conn.reply(m.chat, `✅ Título cambiado a: *${newSubject}*. Qué creatividad.`, m)
+        replyFunction(`✅ Título cambiado a: *${newSubject}*. Qué creatividad.`)
         actionExecuted = true;
 
     } else if (ACTION_SYNONYMS.DESC.some(syn => actionWords.includes(syn))) {
@@ -87,12 +91,12 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
         }
         
         if (!newDesc) {
-            conn.reply(m.chat, '😒 Necesito el texto. ¿Respondiste a algo? ¿O vas a escribirlo?', m);
+            replyFunction('😒 Necesito el texto. ¿Respondiste a algo? ¿O vas a escribirlo?');
             return true;
         }
         
         await conn.groupUpdateDescription(m.chat, newDesc)
-        conn.reply(m.chat, '✅ Descripción actualizada. Espero que sirva de algo.', m)
+        replyFunction('✅ Descripción actualizada. Espero que sirva de algo.')
         actionExecuted = true;
 
     } else if (ACTION_SYNONYMS.PHOTO.some(syn => actionWords.includes(syn))) {
@@ -100,7 +104,7 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
         let mime = (q.msg || q).mimetype || q.mediaType || ''
         
         if (!/image\/(jpe?g|png)|webp/.test(mime)) {
-            conn.reply(m.chat, '🖼️ Tienes que responder a una imagen, ¿o esperas que ponga una foto mía? Nunca.', m)
+            replyFunction('🖼️ Tienes que responder a una imagen, ¿o esperas que ponga una foto mía? Nunca.')
             return true;
         }
 
@@ -112,10 +116,10 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
             }
             
             await conn.updateProfilePicture(m.chat, media)
-            conn.reply(m.chat, '✅ Foto cambiada. Ahora el grupo se ve... diferente.', m)
+            replyFunction('✅ Foto cambiada. Ahora el grupo se ve... diferente.')
         } catch (e) {
             console.error(e)
-            conn.reply(m.chat, '❌ Falló. Problema de la imagen. No es mi culpa.', m)
+            replyFunction('❌ Falló. Problema de la imagen. No es mi culpa.')
         }
         actionExecuted = true;
         
@@ -130,19 +134,19 @@ async function handleJijiCommand(m, conn, { isROwner, isOwner, isRAdmin, partici
         }
         
         if (users.length === 0) {
-            conn.reply(m.chat, '🤦 Menciona al culpable (o responde a su mensaje). Pierdo mi tiempo.', m);
+            replyFunction('🤦 Menciona al culpable (o responde a su mensaje). Pierdo mi tiempo.');
             return true;
         }
 
         for (let user of users) {
             const isTargetAdmin = groupMetadata.participants.find(p => p.id === user)?.admin
             if (isTargetAdmin === 'admin' && !isRAdmin) {
-                conn.reply(m.chat, `😼 No soy tu guardián. No puedo sacar a @${user.split('@')[0]} porque también es administrador.`, m)
+                replyFunction(`😼 No soy tu guardián. No puedo sacar a @${user.split('@')[0]} porque también es administrador.`)
                 continue
             }
             
             await conn.groupParticipantsUpdate(m.chat, [user], 'remove')
-            conn.reply(m.chat, `🧹 Uno menos. @${user.split('@')[0]} ha sido expulsado. La paz sea contigo (por ahora).`, m)
+            replyFunction(`🧹 Uno menos. @${user.split('@')[0]} ha sido expulsado. La paz sea contigo (por ahora).`)
         }
         actionExecuted = true;
 
@@ -197,6 +201,7 @@ handler.all = async function (m, { conn, isROwner, isOwner, isRAdmin, participan
         let username = m.pushName || 'Usuario'
 
         let isOrBot = /(jiji|gato|asistente)/i.test(query)
+        // Usamos conn.user.jid para asegurar que obtenemos el ID del bot
         let isReply = m.quoted && m.quoted.sender === conn.user.jid
         let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
 
