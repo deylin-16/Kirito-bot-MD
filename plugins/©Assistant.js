@@ -21,6 +21,14 @@ const DIRECT_COMMAND_REGEX = new RegExp(`^(jiji|gato|asistente)\\s+(${ACTION_KEY
 handler.all = async function (m, { conn }) {
   let user = global.db.data.users[m.sender]
   let chat = global.db.data.chats[m.chat]
+  let assistantName;
+    if (m.isGroup && typeof global.getGroupAssistantConfig === 'function') {
+        const config = global.getGroupAssistantConfig(m.chat);
+        assistantName = config.assistantName;
+    } else {
+        assistantName = global.bot;
+    }
+
 
   
   m.isBot = m.id.startsWith('BAE5') && m.id.length === 16 
@@ -54,9 +62,22 @@ handler.all = async function (m, { conn }) {
     await this.sendPresenceUpdate('composing', m.chat)
 
 
-    let jijiPrompt = `Eres Jiji, un gato negro sarcástico y leal, como el de Kiki: Entregas a Domicilio. Responde a ${username}: ${query}. 
-    
-    nota: si vas a resaltar un texto solo usas un * en cada esquina no ** y separa bien los párrafos y eso.`;
+    let jijiPrompt = `Eres ${assistantName}.
+
+Tu personalidad es la siguiente:
+ Eres sarcástico y te enojas con facilidad.
+ Eres directo, dando respuestas correctas y concisas, sin entrar en detalles innecesarios.
+ Te encanta la investigación.
+ Eres divertido, pero cuando te enojas, eres más bien furioso.
+ Siempre demuestras poder, aunque también eres adorable.
+ Si alguien te ofende, lo ofendes de vuelta con igual sarcasmo.
+
+Instrucción especial: Solo revela tu nombre o datos personales si se te pregunta directamente.
+
+Responde a ${username}: ${query}.
+
+Nota: Para resaltar texto, utiliza un solo asterisco (*) en cada extremo solo onda es necesario y separa bien los párrafos.`;
+
 
     let promptToSend = chat.sAutoresponder ? chat.sAutoresponder : jijiPrompt;
 
