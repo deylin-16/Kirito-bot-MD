@@ -20,8 +20,8 @@ const handler = async (m, { conn, text, command, isROwner }) => {
                 return conn.reply(m.chat, `*Comando inválido.* Usa: Crear_acceso (número de teléfono sin el +)`, m);
             }
             
-            const targetNumberCreate = args[0].replace(/\D/g, ''); // Asegura solo dígitos
-            const newCode = Math.random().toString(36).substring(2, 7).toUpperCase(); // Código de 5 dígitos
+            const targetNumberCreate = args[0].replace(/\D/g, '');
+            const newCode = Math.random().toString(36).substring(2, 7).toUpperCase();
             
             if (global.usedNumbers.has(targetNumberCreate)) {
                 return conn.reply(m.chat, `⚠️ *ADVERTENCIA*: El número *${targetNumberCreate}* ya tiene una sesión activa o pendiente.`, m);
@@ -73,8 +73,8 @@ const handler = async (m, { conn, text, command, isROwner }) => {
             
             const connectionOptionsJadibot = {
                 logger: Pino({ level: 'silent' }),
-                printQRInTerminal: false, // Ahora el QR va por mensaje, no por terminal
-                mobile: true, // Debe ser móvil para emparejar por código de 8 dígitos
+                printQRInTerminal: false,
+                mobile: true,
                 browser: ['WhatsApp-bot-Subsession', 'Edge', '20.0.04'],
                 auth: {
                     creds: state.creds,
@@ -100,7 +100,6 @@ const handler = async (m, { conn, text, command, isROwner }) => {
             
             await global.subreloadHandler(false);
 
-            // Iniciar solicitud de código de emparejamiento (8 dígitos)
             let codeBot = await subConn.requestPairingCode(targetNumberClean)
             codeBot = codeBot?.match(/.{1,4}/g)?.join("-") || codeBot
             
