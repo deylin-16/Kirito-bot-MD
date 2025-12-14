@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { randomBytes } from 'crypto';
-import { unlinkSync, existsync } from 'fs';
+import { unlinkSync, existsSync } from 'fs'; // <--- CORRECCIÓN APLICADA: 'existsync' a 'existsSync'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,7 +23,7 @@ let handler = async (m, { conn, text, command, isROwner }) => {
     // --- CONECTAR ---
     if (normalizedCommand === 'conectar') {
         
-        let rawNumber = text.trim() || ''; // Asume que `text` es el argumento (el número)
+        let rawNumber = text.trim() || ''; 
 
         let numberToPair = rawNumber;
         
