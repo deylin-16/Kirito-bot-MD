@@ -12,7 +12,7 @@ import {spawn} from 'child_process'
 import lodash from 'lodash'
 import chalk from 'chalk'
 import syntaxerror from 'syntax-error'
-import {tmpdir} from 'os'
+import os, {tmpdir} from 'os'
 import {format} from 'util'
 import P from 'pino'
 import pino from 'pino'
@@ -34,6 +34,7 @@ const {CONNECTING} = ws
 const {chain} = lodash
 global.sessions = 'sessions' 
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000
+const USER_IDENTIFIER = 'assistant_access'
 
 console.log(chalk.bold.hex('#FF00FF')(`\n👾 INICIANDO WHATSAPP-BOT ⚡\n`))
 
@@ -60,17 +61,19 @@ global.opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse()
 global.prefix = new RegExp('^[#/!]')
 
 global.db = new Low(/https?:\/\//.test(opts['db'] || '') ? new cloudDBAdapter(opts['db']) : new JSONFile('./lib/1.json'))
+global.dbSessions = new Low(new JSONFile('./lib/sessions.json')); 
 
 global.DATABASE = global.db 
 global.loadDatabase = async function loadDatabase() {
-if (global.db.READ) {
+if (global.db.READ && global.dbSessions.READ) {
 return new Promise((resolve) => setInterval(async function() {
-if (!global.db.READ) {
+if (!global.db.READ && !global.dbSessions.READ) {
 clearInterval(this)
 resolve(global.db.data == null ? global.loadDatabase() : global.db.data);
 }}, 1 * 1000))
 }
-if (global.db.data !== null) return
+if (global.db.data !== null && global.dbSessions.data !== null) return
+
 global.db.READ = true
 await global.db.read().catch(console.error)
 global.db.READ = null
@@ -84,6 +87,15 @@ settings: {},
 ...(global.db.data || {}),
 }
 global.db.chain = chain(global.db.data)
+
+global.dbSessions.READ = true
+await global.dbSessions.read().catch(console.error);
+global.dbSessions.READ = null
+global.dbSessions.data = {
+    paired_sessions: {},
+    ...(global.dbSessions.data || {}),
+}
+global.dbSessions.chain = chain(global.dbSessions.data);
 }
 loadDatabase()
 
@@ -148,99 +160,15 @@ console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO DE 8 DÍGITOS 🌟`
 }, 3000)
 }}}
 
-global.conns = new Map();
-global.authCodeMap = new Map();
-global.authCodeNumber = 1;
-global.usedNumbers = new Set();
-global.ACCESS_SESSION_PREFIX = 'access_assistant_sub-';
 
-async function connectionUpdateJadibot(update) {
-    const conn = this;
-    const { connection, lastDisconnect, isNewLogin } = update;
-    if (isNewLogin) conn.isInit = true;
-
-    const code = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode;
-    if (code && code !== DisconnectReason.loggedOut && conn?.ws.socket == null) {
-        setTimeout(() => global.subreloadHandler(true).catch(console.error), 1000); 
-    }
-    
-    if (connection == 'open') {
-        console.log(chalk.bold.hex('#00FF00')(`\n✅ SUBSECCIÓN ${conn.numberConn || 'N/A'} CONECTADA (${conn.user.jid})`));
-    }
-
-    if (connection === 'close') {
-        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-        console.log(chalk.bold.hex('#FF0000')(`\n❌ SUBSECCIÓN ${conn.numberConn || 'N/A'} DESCONECTADA: ${reason}`));
-
-        if (reason === DisconnectReason.loggedOut || reason === DisconnectReason.badSession || reason === 401) {
-            const sessionPath = `./${global.sessions}/${global.ACCESS_SESSION_PREFIX}${conn.numberConn}`;
-            if (fs.existsSync(sessionPath)) {
-                rmSync(sessionPath, { recursive: true, force: true });
-            }
-            global.conns.delete(conn.user.jid);
-            global.usedNumbers.delete(conn.numberConn);
-        } else {
-            setTimeout(() => global.subreloadHandler(true).catch(console.error), 1000);
-        }
-    }
-}
-
-async function loadJadibotSessions() {
-    const jadibotDir = `./${global.sessions}/`;
-    if (!fs.existsSync(jadibotDir)) return;
-
-    const files = fs.readdirSync(jadibotDir).filter(f => f.startsWith(global.ACCESS_SESSION_PREFIX) && fs.statSync(path.join(jadibotDir, f)).isDirectory());
-    
-    for (const folder of files) {
-        const numberMatch = folder.match(new RegExp(global.ACCESS_SESSION_PREFIX + '(\\d+)'));
-        if (!numberMatch) continue;
-        const numberConn = numberMatch[1];
-        
-        try {
-            const { state, saveState, saveCreds } = await useMultiFileAuthState(`./${global.sessions}/${folder}`);
-            
-            const subConn = makeWASocket({
-                ...connectionOptions,
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
-                },
-                getMessage: async (clave) => {
-                    let jid = jidNormalizedUser(clave.remoteJid);
-                    let msg = await store.loadMessage(jid, clave.id);
-                    return msg?.message || "";
-                },
-                mobile: true,
-            });
-            
-            subConn.numberConn = numberConn;
-            subConn.saveCreds = saveCreds;
-            global.conns.set(subConn.user.jid, subConn);
-            global.usedNumbers.add(numberConn);
-            
-            subConn.ev.on('connection.update', connectionUpdateJadibot.bind(subConn));
-            subConn.ev.on('creds.update', subConn.saveCreds.bind(subConn, true));
-            
-            console.log(chalk.bold.hex('#00FFFF')(`\n⚙️ CARGANDO SUBSECCIÓN NÚMERO ${numberConn}...`));
-            
-        } catch (e) {
-            console.error(`Error al cargar la subsesión ${numberConn}:`, e);
-        }
-    }
-    
-    if (global.usedNumbers.size > 0) {
-        const maxNumber = Math.max(...Array.from(global.usedNumbers).map(Number));
-        global.authCodeNumber = maxNumber + 1;
-    }
-}
-
-global.conn.isInit = false;
-global.conn.well = false;
+conn.isInit = false;
+conn.well = false;
 
 if (!opts['test']) {
 if (global.db) setInterval(async () => {
 if (global.db.data) await global.db.write()
-if (opts['autocleartmp'] && (global.support || {}).find) (tmp = [os.tmpdir(), 'tmp', `${jadi}`], tmp.forEach((filename) => cp.spawn('find', [filename, '-amin', '3', '-type', 'f', '-delete'])));
+if (global.dbSessions.data) await global.dbSessions.write()
+if (opts['autocleartmp'] && (global.support || {}).find) (tmp = [os.tmpdir(), 'tmp', `${USER_IDENTIFIER}`], tmp.forEach((filename) => cp.spawn('find', [filename, '-amin', '3', '-type', 'f', '-delete'])));
 }, 30 * 1000);
 }
 
@@ -286,44 +214,6 @@ process.on('uncaughtException', console.error)
 
 let isInit = true;
 let handler = await import('./handler.js')
-
-global.subreloadHandler = async function(restart) {
-    console.log(chalk.bold.hex('#FFA500')(`\n🔄 RECARGANDO LÓGICA DE SUBSECCIONES...`));
-    try {
-        const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
-        if (Object.keys(Handler || {}).length) handler = Handler;
-    } catch (e) {
-        console.error(e);
-    }
-
-    for (const [jid, subConn] of global.conns.entries()) {
-        if (!subConn.user) continue;
-        
-        if (!subConn.isInit) {
-            try {
-                subConn.ev.off('messages.upsert', subConn.handler);
-                subConn.ev.off('connection.update', subConn.connectionUpdate);
-                subConn.ev.off('creds.update', subConn.credsUpdate);
-            } catch (e) {
-                console.error(`Error al quitar listeners de ${subConn.numberConn}:`, e);
-            }
-        }
-
-        subConn.handler = handler.handler.bind(subConn);
-        subConn.connectionUpdate = connectionUpdateJadibot.bind(subConn);
-        subConn.credsUpdate = subConn.saveCreds.bind(subConn, true);
-
-        try {
-            subConn.ev.on('messages.upsert', subConn.handler);
-            subConn.ev.on('connection.update', subConn.connectionUpdate);
-            subConn.ev.on('creds.update', subConn.credsUpdate);
-            subConn.isInit = false;
-        } catch (e) {
-             console.error(`Error al añadir listeners a ${subConn.numberConn}:`, e);
-        }
-    }
-};
-
 global.reloadHandler = async function(restatConn) {
 try {
 const Handler = await import(`./handler.js?update=${Date.now()}`).catch(console.error);
@@ -363,13 +253,8 @@ conn.ev.on('messages.upsert', conn.handler)
 conn.ev.on('connection.update', conn.connectionUpdate)
 conn.ev.on('creds.update', conn.credsUpdate)
 isInit = false
-await global.subreloadHandler(false);
 return true
 };
-
-loadJadibotSessions().then(() => {
-    global.subreloadHandler(false);
-});
 
 const pluginFolder = global.__dirname(join(__dirname, './plugins/index'))
 const pluginFilter = (filename) => /\.js$/.test(filename)
