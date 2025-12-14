@@ -61,7 +61,7 @@ if (normalizedCommand === 'conectar') {
     
     await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${sessionId}*. Esperando código de emparejamiento...`, m);
 
-    ConnectAdditionalSession({ pathSubSession, m, conn })
+    ConnectAdditionalSession({ pathSubSession, m, conn, usedPrefix })
 } 
 
 if (normalizedCommand === 'eliminar_conexion') {
@@ -99,7 +99,7 @@ handler.owner = true
 export default handler 
 
 export async function ConnectAdditionalSession(options) {
-    let { pathSubSession, m, conn } = options
+    let { pathSubSession, m, conn, usedPrefix } = options
     let sessionId = path.basename(pathSubSession)
     
     let { version } = await fetchLatestBaileysVersion()
@@ -125,50 +125,45 @@ export async function ConnectAdditionalSession(options) {
     sock.isInit = false
     let isInit = true
     let codeSent = false 
-
-    // --- LÓGICA DE SOLICITUD DE CÓDIGO INMEDIATA (COMO EN INDEX.JS) ---
-    if (!sock.authState.creds.registered) {
-        (async () => {
-            // Utilizamos el mismo retraso de 3 segundos que en index.js para estabilizar la conexión.
-            await delay(3000); 
-            try {
-                let secret = await sock.requestPairingCode(sessionId) 
-                secret = secret?.match(/.{1,4}/g)?.join("-") || secret
-
-                const rtx2 = `
-✅ *CÓDIGO WHATSAPP PARA VINCULAR*
-
-💻 〢 Sesión ID: *${sessionId}*
-⏳ 〢 Ingresa el código en 60s.
-
-> 🔑 CÓDIGO: *${secret}*
-
-*Instrucciones:* En tu móvil, ve a *Dispositivos vinculados* > *Vincular con el número de teléfono* e ingresa el código.
-`;
-                await conn.reply(m.chat, rtx2.trim(), m);
-                codeSent = true 
-            } catch (e) {
-                console.error(`Error al solicitar pairing code para ${sessionId}:`, e);
-                await conn.reply(m.chat, `⚠️ Error al obtener código. Intente *${options.usedPrefix}eliminar_conexion ${sessionId}* y vuelva a *${options.usedPrefix}conectar ${sessionId}*.`, m);
-                // Si falla, cerramos el socket para evitar que se quede pegado.
-                sock.ws.close(); 
-            }
-        })();
-    }
-    // --- FIN LÓGICA DE SOLICITUD DE CÓDIGO INMEDIATA ---
+    
+    // Texto del código de emparejamiento
+    const rtx2 = "*❀ SER BOT • MODE CODE*\n\n✰ Usa este Código para convertirte en un *Sub-Bot* Temporal.\n\n\`1\` » Haga clic en los tres puntos en la esquina superior derecha\n\n\`2\` » Toque dispositivos vinculados\n\n\`3\` » Selecciona Vincular con el número de teléfono\n\n\`4\` » Escriba el Código para iniciar sesion con el bot\n\n✧ No es recomendable usar tu cuenta principal."
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
 
         if (isNewLogin) sock.isInit = false
 
-        if (qr && !codeSent) { 
-            // Si el QR aparece y el código NO se ha enviado, forzamos el cierre para que se reintente la conexión
-            // y la lógica de arriba vuelva a intentar obtener el código de emparejamiento.
-            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Cerrando para forzar modo código...`));
-            sock.ws.close();
+        // 1. Manejo del QR y Solicitud del Código
+        if (qr && !codeSent && !sock.authState.creds.registered) {
+            
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Solicitando código de emparejamiento...`));
+            
+            try {
+                // Solicitamos el código ahora que Baileys ha procesado el QR (incluso si no lo mostramos)
+                let secret = await sock.requestPairingCode(sessionId) 
+                secret = secret?.match(/.{1,4}/g)?.join("-") || secret
+
+                // Enviamos el mensaje en el chat principal
+                await conn.sendMessage(m.chat, {text : rtx2}, { quoted: m })
+                await conn.reply(m.chat, secret, m)
+                
+                console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO DE 8 DÍGITOS (+${sessionId}) 🌟`)), chalk.bold.yellowBright(secret))
+                codeSent = true 
+            } catch (e) {
+                console.error(`Error al solicitar pairing code para ${sessionId}:`, e);
+                // Si falla (como el 428 que viste), cerramos la conexión para forzar un reintento
+                if (e.message.includes('Connection Closed') || e.message.includes('428')) {
+                    await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${sessionId}*...`, m);
+                    sock.ws.close();
+                } else {
+                     await conn.reply(m.chat, `⚠️ Error al obtener código. Intente *${usedPrefix}eliminar_conexion ${sessionId}* y vuelva a *${usedPrefix}conectar ${sessionId}*.`, m);
+                     sock.ws.close();
+                }
+            }
         } 
 
+        // 2. Manejo de Desconexión
         if (connection === 'close') {
             codeSent = false;
             const reason = lastDisconnect?.error?.output?.statusCode; 
@@ -193,6 +188,7 @@ export async function ConnectAdditionalSession(options) {
             }
         }
 
+        // 3. Manejo de Conexión Abierta
         if (global.db.data == null) loadDatabase()
         if (connection == `open`) {
             let userName = sock.authState.creds.me.name || 'Anónimo'
@@ -203,7 +199,8 @@ export async function ConnectAdditionalSession(options) {
             if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
                 global.additionalConns.push(sock)
             }
-            if (codeSent) {
+            // Notificamos si se usó el código para vincular
+            if (sock.authState.creds.registered && codeSent) { 
                 await conn.reply(m.chat, `🎉 *Sesión ID: ${sessionId}* vinculada y activa.`, m);
             }
         }
