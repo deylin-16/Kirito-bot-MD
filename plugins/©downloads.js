@@ -65,9 +65,7 @@ var handler = async (m, { conn, args }) => {
             result = {
                 url: videoURL,
                 filename: 'tiktok.mp4',
-                platform: platform,
-               // info: `
-                `.trim()
+                platform: platform
             };
 
         } else if (url.includes('instagram.com')) {
@@ -77,7 +75,6 @@ var handler = async (m, { conn, args }) => {
             for (let media of data) {
                 const filename = media.type === 'video' ? 'instagram_video.mp4' : 'instagram_image.jpg';
                 
-               // let info = ` `.trim();
 
                 await conn.sendFile(m.chat, media.url, filename, info, m);
             }
@@ -94,8 +91,7 @@ var handler = async (m, { conn, args }) => {
             result = {
                 url: videoData.url,
                 filename: 'facebook.mp4',
-                platform: platform,
-                //info: ``.trim()
+                platform: platform
             };
 
         } else {
