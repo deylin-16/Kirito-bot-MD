@@ -43,7 +43,7 @@ if (normalizedCommand === 'conectar') {
     let rawId = args[0] ? args[0].replace(/[^0-9]/g, '') : m.sender.split('@')[0].replace(/[^0-9]/g, '')
     if (rawId.length < 8) return conn.reply(m.chat, `⚠️ Proporcione un identificador válido para la sesión.`, m)
 
-    // Formato E.164: Aseguramos el +
+    
     let sessionId = rawId.startsWith('+') ? rawId : `+${rawId}` 
     let folderId = rawId
     
@@ -136,13 +136,13 @@ export async function ConnectAdditionalSession(options) {
 
         if (isNewLogin) sock.isInit = false
 
-        // 1. Manejo del QR (Proxy para la conexión) y Solicitud del Código Trucado/Funcional
+        
         if (qr && !codeSent && !sock.authState.creds.registered) {
             
             console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${folderId}. Llamando a requestPairingCode para ${sessionId}...`));
             
             try {
-                // LLAMADA CLAVE: Usamos la función nativa, confiando en que tu librería la modifica internamente.
+               
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
@@ -153,7 +153,7 @@ export async function ConnectAdditionalSession(options) {
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para ${folderId}:`, e);
-                // Si el error 428 persiste (socket cerrado), forzamos la reconexión.
+                
                 if (e.message.includes('Connection Closed') || e.message.includes('428')) {
                     await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${folderId}*...`, m);
                     sock.ws.close();
@@ -164,7 +164,7 @@ export async function ConnectAdditionalSession(options) {
             }
         } 
 
-        // 2. Manejo de Desconexión
+        
         if (connection === 'close') {
             codeSent = false;
             const reason = lastDisconnect?.error?.output?.statusCode; 
@@ -189,12 +189,12 @@ export async function ConnectAdditionalSession(options) {
             }
         }
 
-        // 3. Manejo de Conexión Abierta
+        
         if (global.db.data == null) loadDatabase()
         if (connection == `open`) {
             let userName = sock.authState.creds.me.name || 'Anónimo'
             
-            console.log(chalk.bold.cyanBright(`\n❒⸺⸺⸺⸺【• SESIÓN ADICIONAL •】⸺⸺⸺⸺❒\n│ 🟢 ${userName} (+${folderId}) CONECTADO exitosamente.\n❒⸺⸺⸺【• CONECTADO •】⸺⸺⸺❒`))
+            console.log(chalk.bold.cyanBright(` 🪐 ${userName} (+${folderId}) CONECTADO exitosamente.`))
 
             sock.isInit = true
             if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
