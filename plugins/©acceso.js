@@ -43,10 +43,8 @@ if (normalizedCommand === 'conectar') {
     let rawId = args[0] ? args[0].replace(/[^0-9]/g, '') : m.sender.split('@')[0].replace(/[^0-9]/g, '')
     if (rawId.length < 8) return conn.reply(m.chat, `⚠️ Proporcione un identificador válido para la sesión.`, m)
 
-    // Formato E.164: Si no empieza por +, asumimos que el usuario puso un número completo sin él.
+    // Formato E.164: Aseguramos el +
     let sessionId = rawId.startsWith('+') ? rawId : `+${rawId}` 
-    
-    // Usamos el ID sin el + para la carpeta
     let folderId = rawId
     
     const additionalConnsCount = global.additionalConns.length
@@ -131,29 +129,31 @@ export async function ConnectAdditionalSession(options) {
     let isInit = true
     let codeSent = false 
     
-    const rtx2 = "*."
+    const rtx2 = "*❀ SER BOT • MODE CODE*\n\n✰ Usa este Código para convertirte en un *Sub-Bot* Temporal.\n\n\`1\` » Haga clic en los tres puntos en la esquina superior derecha\n\n\`2\` » Toque dispositivos vinculados\n\n\`3\` » Selecciona Vincular con el número de teléfono\n\n\`4\` » Escriba el Código para iniciar sesion con el bot\n\n✧ No es recomendable usar tu cuenta principal."
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
 
         if (isNewLogin) sock.isInit = false
 
+        // 1. Manejo del QR (Proxy para la conexión) y Solicitud del Código Trucado/Funcional
         if (qr && !codeSent && !sock.authState.creds.registered) {
             
-            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${folderId}. Solicitando código de emparejamiento para ${sessionId}...`));
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${folderId}. Llamando a requestPairingCode para ${sessionId}...`));
             
             try {
-                // AQUÍ LA CLAVE: Usar el sessionId con el +
+                // LLAMADA CLAVE: Usamos la función nativa, confiando en que tu librería la modifica internamente.
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
                 await conn.sendMessage(m.chat, {text : rtx2}, { quoted: m })
                 await conn.reply(m.chat, secret, m)
                 
-                console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO DE 8 DÍGITOS (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
+                console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO FUNCIONAL (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para ${folderId}:`, e);
+                // Si el error 428 persiste (socket cerrado), forzamos la reconexión.
                 if (e.message.includes('Connection Closed') || e.message.includes('428')) {
                     await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${folderId}*...`, m);
                     sock.ws.close();
@@ -164,6 +164,7 @@ export async function ConnectAdditionalSession(options) {
             }
         } 
 
+        // 2. Manejo de Desconexión
         if (connection === 'close') {
             codeSent = false;
             const reason = lastDisconnect?.error?.output?.statusCode; 
@@ -188,6 +189,7 @@ export async function ConnectAdditionalSession(options) {
             }
         }
 
+        // 3. Manejo de Conexión Abierta
         if (global.db.data == null) loadDatabase()
         if (connection == `open`) {
             let userName = sock.authState.creds.me.name || 'Anónimo'
