@@ -21,7 +21,13 @@ let handler = async (m, { conn, text, command, isROwner }) => {
     const [action, ...args] = text.trim().split(/\s+/);
     
     if (command === 'conectar') {
-        const numberToPair = args[0] ? args[0].replace(/[^0-9]/g, '') : '';
+        let numberToPair = args[0] || ''; 
+        
+        if (numberToPair.startsWith('+')) {
+            numberToPair = numberToPair.substring(1).replace(/[^0-9]/g, '');
+        } else {
+            numberToPair = numberToPair.replace(/[^0-9]/g, '');
+        }
 
         if (!numberToPair || numberToPair.length < 8) {
             return m.reply('⚠️ Uso: *jiji conectar [número de teléfono]*. Debe ser un número válido (ej: 573001234567).');
@@ -70,9 +76,12 @@ let handler = async (m, { conn, text, command, isROwner }) => {
             return m.reply('❌ Uso inválido. El formato es: *jiji vincular [número] [código de 8 dígitos]*');
         }
         
+        let clientNumberClean = clientNumber.replace(/[^0-9]/g, '');
+        if (clientNumber.startsWith('+')) clientNumberClean = clientNumber.substring(1).replace(/[^0-9]/g, '');
+        
         const sessionEntry = Object.entries(global.dbSessions.data.paired_sessions)
             .find(([id, session]) => 
-                session.number === clientNumber.replace(/[^0-9]/g, '') && 
+                session.number === clientNumberClean && 
                 session.pairingCode === clientCode.toUpperCase() && 
                 session.status === 'PENDING'
             );
