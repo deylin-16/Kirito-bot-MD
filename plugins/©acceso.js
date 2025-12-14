@@ -40,55 +40,61 @@ if (!isROwner) return m.reply(`❌ Solo el creador puede gestionar sesiones adic
 const normalizedCommand = command ? command.toLowerCase() : '';
 
 if (normalizedCommand === 'conectar') {
-    let sessionId = args[0] ? args[0].replace(/[^0-9]/g, '') : m.sender.split('@')[0]
-    if (sessionId.length < 8) return conn.reply(m.chat, `⚠️ Proporcione un identificador válido para la sesión.`, m)
+    let rawId = args[0] ? args[0].replace(/[^0-9]/g, '') : m.sender.split('@')[0].replace(/[^0-9]/g, '')
+    if (rawId.length < 8) return conn.reply(m.chat, `⚠️ Proporcione un identificador válido para la sesión.`, m)
 
+    // Formato E.164: Si no empieza por +, asumimos que el usuario puso un número completo sin él.
+    let sessionId = rawId.startsWith('+') ? rawId : `+${rawId}` 
+    
+    // Usamos el ID sin el + para la carpeta
+    let folderId = rawId
+    
     const additionalConnsCount = global.additionalConns.length
     const MAX_SESSIONS = 30 
     if (additionalConnsCount >= MAX_SESSIONS) {
     return conn.reply(m.chat, `❌ Máximo de ${MAX_SESSIONS} sesiones adicionales alcanzado.`, m)
     }
 
-    let pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, sessionId)
+    let pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, folderId)
 
     if (fs.existsSync(pathSubSession) && fs.existsSync(path.join(pathSubSession, "creds.json"))) {
-        return conn.reply(m.chat, `⚠️ Ya existe una sesión activa o previa con el ID *${sessionId}*. Si desea eliminarla use *${usedPrefix}eliminar_conexion ${sessionId}*`, m)
+        return conn.reply(m.chat, `⚠️ Ya existe una sesión activa o previa con el ID *${folderId}*. Si desea eliminarla use *${usedPrefix}eliminar_conexion ${folderId}*`, m)
     }
 
     if (!fs.existsSync(pathSubSession)){
         fs.mkdirSync(pathSubSession, { recursive: true })
     }
     
-    await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${sessionId}*. Esperando código de emparejamiento...`, m);
+    await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${folderId}*. Número a vincular: *${sessionId}*. Esperando código de emparejamiento...`, m);
 
-    ConnectAdditionalSession({ pathSubSession, m, conn, usedPrefix })
+    ConnectAdditionalSession({ pathSubSession, m, conn, usedPrefix, sessionId, folderId })
 } 
 
 if (normalizedCommand === 'eliminar_conexion') {
-    let sessionId = args[0] ? args[0].replace(/[^0-9]/g, '') : ''
+    let folderId = args[0] ? args[0].replace(/[^0-9]/g, '') : ''
 
-    if (!sessionId) return m.reply(`⚠️ Uso: *${usedPrefix}eliminar_conexion [ID de Sesión]*`);
+    if (!folderId) return m.reply(`⚠️ Uso: *${usedPrefix}eliminar_conexion [ID de Sesión]*`);
 
-    const pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, sessionId)
+    const pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, folderId)
     
     if (fs.existsSync(pathSubSession)) {
          try {
-            const activeConnIndex = global.additionalConns.findIndex(c => path.basename(c.authState.path) === sessionId);
+            const activeConnIndex = global.additionalConns.findIndex(c => path.basename(c.authState.path) === folderId);
             if (activeConnIndex !== -1) {
                 const connToDelete = global.additionalConns[activeConnIndex];
                 await connToDelete.ws.close();
                 global.additionalConns.splice(activeConnIndex, 1);
-                m.reply(`🗑️ Sesión activa ${sessionId} cerrada.`);
+                m.reply(`🗑️ Sesión activa ${folderId} cerrada.`);
             }
 
             fs.rmdirSync(pathSubSession, { recursive: true });
-            m.reply(`🗑️ Carpeta de sesión ${sessionId} eliminada por completo.`);
+            m.reply(`🗑️ Carpeta de sesión ${folderId} eliminada por completo.`);
          } catch (e) {
             console.error(e);
-            m.reply(`⚠️ Error al borrar la carpeta física de la sesión ${sessionId}.`);
+            m.reply(`⚠️ Error al borrar la carpeta física de la sesión ${folderId}.`);
          }
     } else {
-        m.reply(`❌ No se encontró ninguna sesión con el ID ${sessionId}.`);
+        m.reply(`❌ No se encontró ninguna sesión con el ID ${folderId}.`);
     }
 }
 } 
@@ -99,8 +105,7 @@ handler.owner = true
 export default handler 
 
 export async function ConnectAdditionalSession(options) {
-    let { pathSubSession, m, conn, usedPrefix } = options
-    let sessionId = path.basename(pathSubSession)
+    let { pathSubSession, m, conn, usedPrefix, sessionId, folderId } = options
     
     let { version } = await fetchLatestBaileysVersion()
     const msgRetry = (MessageRetryMap) => { }
@@ -115,7 +120,7 @@ export async function ConnectAdditionalSession(options) {
         },
         msgRetry,
         msgRetryCache,
-        browser: [`Sesión Adicional ${sessionId}`, 'Chrome','20.0.04'],
+        browser: [`Sesión Adicional ${folderId}`, 'Chrome','20.0.04'],
         version: version,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: undefined,
@@ -126,44 +131,39 @@ export async function ConnectAdditionalSession(options) {
     let isInit = true
     let codeSent = false 
     
-    // Texto del código de emparejamiento
-    const rtx2 = "*❀ SER BOT • MODE CODE*\n\n✰ Usa este Código para convertirte en un *Sub-Bot* Temporal.\n\n\`1\` » Haga clic en los tres puntos en la esquina superior derecha\n\n\`2\` » Toque dispositivos vinculados\n\n\`3\` » Selecciona Vincular con el número de teléfono\n\n\`4\` » Escriba el Código para iniciar sesion con el bot\n\n✧ No es recomendable usar tu cuenta principal."
+    const rtx2 = "*."
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
 
         if (isNewLogin) sock.isInit = false
 
-        // 1. Manejo del QR y Solicitud del Código
         if (qr && !codeSent && !sock.authState.creds.registered) {
             
-            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Solicitando código de emparejamiento...`));
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${folderId}. Solicitando código de emparejamiento para ${sessionId}...`));
             
             try {
-                // Solicitamos el código ahora que Baileys ha procesado el QR (incluso si no lo mostramos)
+                // AQUÍ LA CLAVE: Usar el sessionId con el +
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
-                // Enviamos el mensaje en el chat principal
                 await conn.sendMessage(m.chat, {text : rtx2}, { quoted: m })
                 await conn.reply(m.chat, secret, m)
                 
-                console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO DE 8 DÍGITOS (+${sessionId}) 🌟`)), chalk.bold.yellowBright(secret))
+                console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO DE 8 DÍGITOS (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
                 codeSent = true 
             } catch (e) {
-                console.error(`Error al solicitar pairing code para ${sessionId}:`, e);
-                // Si falla (como el 428 que viste), cerramos la conexión para forzar un reintento
+                console.error(`Error al solicitar pairing code para ${folderId}:`, e);
                 if (e.message.includes('Connection Closed') || e.message.includes('428')) {
-                    await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${sessionId}*...`, m);
+                    await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${folderId}*...`, m);
                     sock.ws.close();
                 } else {
-                     await conn.reply(m.chat, `⚠️ Error al obtener código. Intente *${usedPrefix}eliminar_conexion ${sessionId}* y vuelva a *${usedPrefix}conectar ${sessionId}*.`, m);
+                     await conn.reply(m.chat, `⚠️ Error al obtener código. Intente *${usedPrefix}eliminar_conexion ${folderId}* y vuelva a *${usedPrefix}conectar ${folderId}*.`, m);
                      sock.ws.close();
                 }
             }
         } 
 
-        // 2. Manejo de Desconexión
         if (connection === 'close') {
             codeSent = false;
             const reason = lastDisconnect?.error?.output?.statusCode; 
@@ -176,32 +176,30 @@ export async function ConnectAdditionalSession(options) {
             ].includes(reason);
 
             if (shouldReconnect) {
-                console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] Sesión (+${sessionId}) se cerró. Razón: ${reason}. RECONECTANDO...`))
+                console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] Sesión (+${folderId}) se cerró. Razón: ${reason}. RECONECTANDO...`))
                 await delay(5000) 
                 return creloadHandler(true).catch(console.error)
             } 
 
             if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
-                console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA (+${sessionId}). Borrando datos.`))
+                console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA (+${folderId}). Borrando datos.`))
                 
                 fs.rmdirSync(pathSubSession, { recursive: true })
             }
         }
 
-        // 3. Manejo de Conexión Abierta
         if (global.db.data == null) loadDatabase()
         if (connection == `open`) {
             let userName = sock.authState.creds.me.name || 'Anónimo'
             
-            console.log(chalk.bold.cyanBright(`\n❒⸺⸺⸺⸺【• SESIÓN ADICIONAL •】⸺⸺⸺⸺❒\n│ 🟢 ${userName} (+${sessionId}) CONECTADO exitosamente.\n❒⸺⸺⸺【• CONECTADO •】⸺⸺⸺❒`))
+            console.log(chalk.bold.cyanBright(`\n❒⸺⸺⸺⸺【• SESIÓN ADICIONAL •】⸺⸺⸺⸺❒\n│ 🟢 ${userName} (+${folderId}) CONECTADO exitosamente.\n❒⸺⸺⸺【• CONECTADO •】⸺⸺⸺❒`))
 
             sock.isInit = true
             if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
                 global.additionalConns.push(sock)
             }
-            // Notificamos si se usó el código para vincular
             if (sock.authState.creds.registered && codeSent) { 
-                await conn.reply(m.chat, `🎉 *Sesión ID: ${sessionId}* vinculada y activa.`, m);
+                await conn.reply(m.chat, `🎉 *Sesión ID: ${folderId}* vinculada y activa.`, m);
             }
         }
     }
