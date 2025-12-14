@@ -10,7 +10,6 @@ import { fileURLToPath } from 'url'
 import * as baileys from "@whiskeysockets/baileys" 
 import { fork } from 'child_process' 
 
-// Importar el handler principal para usarlo en las nuevas sesiones
 let mainHandlerModule = await import('../handler.js').catch(e => console.error('Error al cargar handler principal:', e))
 let mainHandlerFunction = mainHandlerModule?.handler || (() => {})
 
@@ -60,9 +59,8 @@ if (normalizedCommand === 'conectar') {
         fs.mkdirSync(pathSubSession, { recursive: true })
     }
     
-    await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${sessionId}*...`, m);
+    await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${sessionId}*. Esperando código de emparejamiento...`, m);
 
-    // Llama a la función principal que maneja la conexión
     ConnectAdditionalSession({ pathSubSession, m, conn })
 } 
 
@@ -134,33 +132,43 @@ export async function ConnectAdditionalSession(options) {
 
         if (isNewLogin) sock.isInit = false
 
-        if (qr && !codeSent) { 
-            const qrBuffer = await qrcode.toBuffer(qr, { scale: 8 });
-            await conn.sendMessage(m.chat, {
-                image: qrBuffer,
-                caption: `⚠️ Sesión ${sessionId}: Falló el modo código. Escanea este QR para vincular.`,
-            }, { quoted: m });
-            codeSent = true 
-            return
-        } 
+        // Bloque modificado para forzar la solicitud de código de emparejamiento
+        if (connection === 'connecting' && !codeSent && !sock.authState.creds.me) {
+            try {
+                // Forzar la solicitud del código de emparejamiento por teléfono
+                let secret = await sock.requestPairingCode(sessionId) 
+                secret = secret.match(/.{1,4}/g)?.join("-")
 
-        if (sock.authState.creds.me == null && connection === 'open' && !codeSent) {
-            
-            let secret = await sock.requestPairingCode(sessionId) 
-            secret = secret.match(/.{1,4}/g)?.join("-")
-
-            const rtx2 = `
+                const rtx2 = `
 ✅ *CÓDIGO WHATSAPP PARA VINCULAR*
 
 💻 〢 Sesión ID: *${sessionId}*
 ⏳ 〢 Ingresa el código en 60s.
 
 > 🔑 CÓDIGO: *${secret}*
+
+*Instrucciones:* En tu móvil, ve a *Dispositivos vinculados* > *Vincular con el número de teléfono* e ingresa el código.
 `;
-           
-            await conn.reply(m.chat, rtx2.trim(), m);
-            codeSent = true 
+                await conn.reply(m.chat, rtx2.trim(), m);
+                codeSent = true 
+            } catch (e) {
+                console.error(`Error al solicitar pairing code para ${sessionId}:`, e);
+                if (!qr) { // Si no hay QR disponible, avisar del error
+                     await conn.reply(m.chat, `⚠️ No se pudo obtener el código de emparejamiento. Intente nuevamente.`, m);
+                     // Cerrar y eliminar sesión fallida para evitar bucle
+                     fs.rmdirSync(pathSubSession, { recursive: true });
+                     sock.ws.close();
+                }
+            }
+            return
         }
+
+        // Si aparece QR (como fallback o si el pairing code falla), lo ignoramos según la solicitud, 
+        // pero idealmente el bloque de arriba lo previene.
+        if (qr && !codeSent) { 
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${sessionId}. Usando código de emparejamiento.`));
+            // No hacemos nada para no enviar el QR, confiamos en el modo pairing code.
+        } 
 
         if (connection === 'close') {
             codeSent = false;
@@ -195,6 +203,10 @@ export async function ConnectAdditionalSession(options) {
             sock.isInit = true
             if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
                 global.additionalConns.push(sock)
+            }
+            if (codeSent) {
+                // Notificar al dueño que la vinculación fue exitosa
+                await conn.reply(m.chat, `🎉 *Sesión ID: ${sessionId}* vinculada y activa.`, m);
             }
         }
     }
