@@ -1,115 +1,125 @@
-import fs from 'fs'
-import { fileURLToPath } from 'url'
-import path from 'path'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = path.join(__dirname, '../db/group_configs.json')
-
-const loadConfigs = () => {
-    let content = '{}'
-    if (fs.existsSync(DB_PATH)) {
-        content = fs.readFileSync(DB_PATH, 'utf8').trim()
-    }
-
-    if (content === '') {
-        fs.writeFileSync(DB_PATH, JSON.stringify({}), 'utf8')
-        return {}
-    }
-
-    try {
-        return JSON.parse(content)
-    } catch (e) {
-        console.error("El archivo group_configs.json está corrupto. Restableciendo a {}.", e)
-        fs.writeFileSync(DB_PATH, JSON.stringify({}), 'utf8')
-        return {}
-    }
-}
-
-const saveConfigs = (configs) => {
-    fs.writeFileSync(DB_PATH, JSON.stringify(configs, null, 2), 'utf8')
-}
+import { fileURLToPath } from 'url';
+import path from 'path';
+import { useMultiFileAuthState, makeCacheableSignalKeyStore, jidNormalizedUser } from '@whiskeysockets/baileys';
+import { makeWASocket } from '../lib/simple.js';
+import chalk from 'chalk';
+import Pino from 'pino';
+import fs, { rmSync } from 'fs';
+import store from '../lib/store.js';
 
 const handler = async (m, { conn, text, command, isROwner }) => {
-
-    if (!isROwner) return m.reply('❌ Este comando solo puede ser ejecutado por el Propietario/Desarrollador del bot.')
-    if (!m.isGroup) return m.reply('❌ Esta personalización es específica para grupos.')
-
-    const chatId = m.chat
-    const configs = loadConfigs()
-
-    const args = text.split(' ')
-    const action = args[0].toLowerCase()
-    const value = args.slice(1).join(' ').trim()
-
-    if (!action) {
-        return m.reply(`*Uso:*
-*${command} nombre* [Nuevo Nombre del Asistente]
-*${command} imagen* (Responde a una imagen para guardarla como logo del asistente)
-*${command} comando* [Nuevo Comando de una sola palabra]
-*${command} reset* (Para volver a la configuración predeterminada)
-`)
+    if (!isROwner) {
+         return conn.reply(m.chat, `Solo con Deylin-Eliac hablo de eso w.`, m);
     }
 
-    if (!configs[chatId]) {
-        configs[chatId] = { assistantName: null, assistantImage: null, assistantCommand: null }
-    }
+    const args = text.split(/\s+/).filter(v => v);
 
-    if (action === 'nombre') {
-        if (!value) return m.reply('⚠️ Por favor, introduce el nuevo nombre del asistente para este grupo.')
+    switch (command) {
+        case 'crear_acceso':
+            if (args.length < 1 || args[0] !== '1') {
+                return conn.reply(m.chat, `*Comando inválido.* Usa: Crear_acceso 1`, m);
+            }
+            
+            const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const numberConn = global.authCodeNumber.toString();
+            
+            global.authCodeMap.set(newCode, {
+                number: numberConn,
+                used: false,
+                creatorJid: m.sender,
+                createdAt: Date.now()
+            });
+            
+            global.authCodeNumber++;
 
-        configs[chatId].assistantName = value
-        saveConfigs(configs)
-        m.reply(`✅ Nombre del asistente para este grupo cambiado a: *${value}*.`)
+            conn.reply(m.chat, 
+                `*🔑 CÓDIGO DE ACCESO GENERADO*:\n\n` +
+                `*Número de Conexión (Dirección):* ${numberConn}\n` +
+                `*Código de Acceso (Contraseña):* ${newCode}\n\n` +
+                `_Solo puede usarse una vez con el comando:_ \n` +
+                `*Vincular ${numberConn} ${newCode}*`, m);
+            break;
 
-    } else if (action === 'imagen') {
-        let q = m.quoted ? m.quoted : m
-        let mime = (q.msg || q).mimetype || q.mediaType || ''
+        case 'vincular':
+            if (args.length !== 2) {
+                return conn.reply(m.chat, `*Comando inválido.* Usa: Vincular (número) (contraseña de acceso)`, m);
+            }
+            
+            const [targetNumber, targetCode] = args;
+            const authData = global.authCodeMap.get(targetCode.toUpperCase());
 
-        if (!/image\/(jpe?g|png)|webp/.test(mime)) {
-            return m.reply('🖼️ Debe responder a una imagen para guardarla como logo/imagen del asistente en este grupo.')
-        }
+            if (!authData || authData.used || authData.number !== targetNumber) {
+                return conn.reply(m.chat, `❌ *ERROR DE CONEXIÓN*:\n\nNúmero de conexión o código de acceso inválido/usado.`, m);
+            }
+            
+            authData.used = true;
+            global.authCodeMap.set(targetCode.toUpperCase(), authData);
+            
+            if (global.usedNumbers.has(targetNumber)) {
+                return conn.reply(m.chat, `⚠️ *ADVERTENCIA*: El número de conexión *${targetNumber}* ya está en uso.`, m);
+            }
+            
+            global.usedNumbers.add(targetNumber);
 
-        try {
-            let media = await q.download?.()
-            const base64Image = media.toString('base64') 
+            const sessionID = `${global.ACCESS_SESSION_PREFIX}${targetNumber}`;
+            const sessionPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', global.sessions, sessionID);
+            
+            const { state, saveState, saveCreds } = await useMultiFileAuthState(sessionPath);
+            
+            const connectionOptionsJadibot = {
+                logger: Pino({ level: 'silent' }),
+                printQRInTerminal: true,
+                browser: ['WhatsApp-bot-Subsession', 'Edge', '20.0.04'],
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
+                },
+                markOnlineOnConnect: true,
+                generateHighQualityLinkPreview: true,
+                getMessage: async (clave) => {
+                    let jid = jidNormalizedUser(clave.remoteJid);
+                    let msg = await store.loadMessage(jid, clave.id);
+                    return msg?.message || "";
+                },
+            };
 
-            configs[chatId].assistantImage = base64Image
-            saveConfigs(configs)
+            const subConn = makeWASocket(connectionOptionsJadibot);
+            
+            subConn.numberConn = targetNumber;
+            subConn.saveCreds = saveCreds;
+            global.conns.set(subConn.user.jid, subConn);
+            
+            subConn.ev.on('connection.update', global.connectionUpdateJadibot.bind(subConn));
+            subConn.ev.on('creds.update', subConn.saveCreds.bind(subConn, true));
+            
+            await global.subreloadHandler(false);
 
-            m.reply('✅ Imagen del asistente guardada exitosamente para este grupo.')
+            conn.reply(m.chat, `✅ *VINCULACIÓN INICIADA*:\n\nEl usuario que usó el código recibirá un QR en la terminal. Debe escanearlo *rápidamente*.`, m);
 
-        } catch (e) {
-            console.error(e)
-            m.reply('❌ Falló la descarga o guardado de la imagen.')
-        }
+            subConn.ev.on('qr', qr => {
+                conn.sendMessage(m.chat, { image: qr, caption: `*ESCANEE ESTE QR RÁPIDAMENTE*\n\nSesión: *${targetNumber}*` }, { quoted: m });
+            });
+            
+            break;
 
-    } else if (action === 'comando') {
-        if (!value) return m.reply('⚠️ Por favor, introduce el nuevo comando de una sola palabra.')
+        case 'conexiones':
+            const activeConnections = Array.from(global.conns.values())
+                .filter(c => c.user)
+                .map(c => `- *[${c.numberConn}]* ID: ${c.user.jid.split('@')[0]}`);
+            
+            const response = activeConnections.length > 0 
+                ? `*🔗 CONEXIONES DE SUBSECCIÓN ACTIVAS:*\n\n${activeConnections.join('\n')}\n\n*TOTAL: ${activeConnections.length}*`
+                : `*❌ NO HAY CONEXIONES ACTIVAS EN ESTE MOMENTO.*`;
+            
+            conn.reply(m.chat, response, m);
+            break;
 
-        if (value.includes(' ')) {
-            return m.reply('🚫 El comando debe ser una única palabra (ej: kiki, bot, jarvis).')
-        }
-
-        if (!/^[a-zA-Z0-9]+$/.test(value)) {
-            return m.reply('🚫 El comando solo debe contener letras y números.')
-        }
-
-        configs[chatId].assistantCommand = value.toLowerCase()
-        saveConfigs(configs)
-        m.reply(`✅ Comando principal del asistente para este grupo cambiado a: *${value.toLowerCase()}*.`)
-
-    } else if (action === 'reset') {
-        delete configs[chatId]
-        saveConfigs(configs)
-        m.reply('✅ Configuración del asistente restablecida a la identidad predeterminada (Nombre: Jiji, Comando: jiji).')
-
-    } else {
-        return m.reply(`*Acción desconocida:* '${action}'. Use 'nombre', 'imagen', 'comando' o 'reset'.`)
+        default:
+            break;
     }
 }
 
-handler.command = ['setassistant']
-handler.tags = ['owner']
+handler.command = ['crear_acceso', 'vincular', 'conexiones', 'setassistant']
 handler.rowner = true
 
 export default handler
