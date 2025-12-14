@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { randomBytes } from 'crypto';
-import { unlinkSync, existsSync } from 'fs';
+import { unlinkSync, existsync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,7 +10,6 @@ const generateCode = (length) => randomBytes(Math.ceil(length / 2)).toString('he
 
 let handler = async (m, { conn, text, command, isROwner }) => {
     
-    // Normalizar el comando para evitar problemas de mayúsculas/minúsculas
     const normalizedCommand = command ? command.toLowerCase() : '';
 
     if (!isROwner) {
@@ -24,8 +23,9 @@ let handler = async (m, { conn, text, command, isROwner }) => {
     // --- CONECTAR ---
     if (normalizedCommand === 'conectar') {
         
-        // Extraemos el texto después de la primera palabra (el comando)
-        let numberToPair = text.trim().split(/\s+/).slice(1).join(' ').trim() || '';
+        let rawNumber = text.trim() || ''; // Asume que `text` es el argumento (el número)
+
+        let numberToPair = rawNumber;
         
         if (numberToPair.startsWith('+')) {
             numberToPair = numberToPair.substring(1).replace(/[^0-9]/g, '');
@@ -75,7 +75,7 @@ let handler = async (m, { conn, text, command, isROwner }) => {
     if (normalizedCommand === 'vincular') {
         if (isROwner) return m.reply('Este comando es para el cliente, no para ti, Creador.');
 
-        const args = text.trim().split(/\s+/).slice(1);
+        const args = text.trim().split(/\s+/);
         const [clientNumber, clientCode] = args;
 
         if (!clientNumber || !clientCode || clientCode.length !== 8) {
@@ -113,7 +113,7 @@ La sesión *${sessionId}* ha sido marcada como activa. El bot secundario se cone
 
     // --- ELIMINAR_CONEXION ---
     if (normalizedCommand === 'eliminar_conexion') {
-        const args = text.trim().split(/\s+/).slice(1);
+        const args = text.trim().split(/\s+/);
         const [sessionId, creatorCode] = args;
 
         if (!sessionId || !creatorCode || creatorCode.length !== 4) {
