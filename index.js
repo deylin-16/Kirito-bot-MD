@@ -11,7 +11,7 @@ import { readdirSync, statSync, unlinkSync, existsSync, mkdirSync, readFileSync,
 import yargs from 'yargs';
 import { spawn, execSync } from 'child_process';
 import lodash from 'lodash';
-import { assistant_accessJadiBot } from './plugins/©acceso.js'; // CAMBIO A './plugins/©acceso.js'
+import { assistant_accessJadiBot } from './plugins/©acceso.js';
 import chalk from 'chalk';
 import syntaxerror from 'syntax-error';
 import { tmpdir } from 'os';
@@ -36,11 +36,12 @@ const { chain } = lodash;
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3000;
 
 let { say } = cfonts;
-// ELIMINACIÓN DE DECORACIÓN: Se quitan mensajes iniciales decorativos
-console.log(chalk.bold.hex('#00FF7F')('Iniciando WhatsApp_bot...')); 
-say('WhatsApp_bot', { // CAMBIO DE NOMBRE
+console.log(chalk.bold.hex('#7B68EE')('┌───────────────────────────┐'));
+console.log(chalk.bold.hex('#7B68EE')('│      SYSTEM INITATING...      │'));
+console.log(chalk.bold.hex('#7B68EE')('└───────────────────────────┘'));
+say('WhatsApp_bot', {
   font: 'chrome',
-  align: 'left',
+  align: 'center',
   gradient: ['#00BFFF', '#FF4500'] 
 });
 say('by Deylin', {
@@ -103,22 +104,22 @@ const methodCodeQR = process.argv.includes("qr");
 const methodCode = !!phoneNumber || process.argv.includes("code");
 const MethodMobile = process.argv.includes("mobile");
 
-// MEJORA DE COLORES PARA CONSOLA
-const colors = chalk.bold.hex('#DAA520'); // Dorado
-const textOption = chalk.hex('#1E90FF'); // Azul brillante
+const consoleAccent = chalk.bold.hex('#FF69B4');
+const consoleSuccess = chalk.bold.hex('#32CD32');
+const consoleError = chalk.bold.hex('#FF4500');
+const consoleWarning = chalk.bold.hex('#FFA500');
+const consoleInfo = chalk.bold.hex('#1E90FF');
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const question = (texto) => new Promise((resolver) => rl.question(texto, resolver));
 let opcion;
 
-// ELIMINACIÓN DE CONEXIÓN POR QR: Forzando solo código (opcion = '2')
 if (methodCodeQR) {
-  // Ignorar 'qr' si se pasa como argumento para forzar código
 }
 if (!methodCodeQR && !methodCode && !existsSync(`./${sessions}/creds.json`)) {
-  opcion = '2'; // Forzar la opción de código de 8 dígitos
+  opcion = '2';
   if (!conn.authState.creds.registered) {
-    console.log(colors("Iniciando conexión por código de emparejamiento."));
+    console.log(consoleAccent(":: INICIO :: Conexión por código de emparejamiento seleccionada."));
   }
 }
 
@@ -137,9 +138,9 @@ console.debug = () => {};
 
 const connectionOptions = {
   logger: pino({ level: 'silent' }),
-  printQRInTerminal: false, // Forzar a no imprimir QR
+  printQRInTerminal: false,
   mobile: MethodMobile,
-  browser: Browsers.macOS("Chrome"), // Navegador por defecto, sin opción QR
+  browser: Browsers.macOS("Chrome"),
   auth: {
     creds: state.creds,
     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
@@ -175,8 +176,7 @@ if (!existsSync(`./${sessions}/creds.json`)) {
         addNumber = phoneNumber.replace(/[^0-9]/g, '');
       } else {
         do {
-          // MENÚ SIN DECORACIÓN
-          phoneNumber = await question(colors(`[ INFO ] Ingrese el número de WhatsApp para conectar (Ej: +505 7631 5903):\n---> `));
+          phoneNumber = await question(consoleInfo(`[ INPUT ] Ingrese el número de WhatsApp para conectar (Ej: +505 7631 5903):\n> `));
           phoneNumber = phoneNumber.replace(/\D/g, '');
           if (!phoneNumber.startsWith('+')) {
             phoneNumber = `+${phoneNumber}`;
@@ -187,8 +187,9 @@ if (!existsSync(`./${sessions}/creds.json`)) {
         setTimeout(async () => {
           let codeBot = await conn.requestPairingCode(addNumber);
           codeBot = codeBot?.match(/.{1,4}/g)?.join("-") || codeBot;
-          // MEJORA DE COLORES PARA CÓDIGO
-          console.log(chalk.bold.hex('#FF6347')(`[ CÓDIGO ]`), chalk.bold.hex('#F0E68C')(`El código de emparejamiento es: ${codeBot}`));
+          console.log(consoleAccent(`\n╔═══════════════════════════════════════╗`));
+          console.log(consoleAccent(`║  CÓDIGO DE VINCULACIÓN: `), chalk.bold.hex('#F0E68C')(`${codeBot}`));
+          console.log(consoleAccent(`╚═══════════════════════════════════════╝\n`));
         }, 3000);
       }
     }
@@ -196,7 +197,7 @@ if (!existsSync(`./${sessions}/creds.json`)) {
 }
 conn.isInit = false;
 conn.well = false;
-console.log(chalk.bold.hex('#32CD32')(`[ OK ]  Conexión lista para handler.\n`)); // MEJORA DE COLOR
+console.log(consoleSuccess(`:: ESTADO :: Conexión lista para handler. ${chalk.bold.hex('#1E90FF')(`(v${version.join('.')})`)}\n`));
 if (!opts['test']) {
   if (global.db) setInterval(async () => {
     if (global.db.data) await global.db.write();
@@ -320,39 +321,38 @@ async function connectionUpdate(update) {
     global.timestamp.connect = new Date;
   }
   if (global.db.data == null) loadDatabase();
-  // ELIMINACIÓN DE MENSAJE QR
   if (update.qr != 0 && update.qr != undefined || methodCodeQR) {
-    // Si la conexión es por QR, no hace nada porque se forzó a usar código de emparejamiento.
   }
   if (connection === "open") {
     const userJid = jidNormalizedUser(conn.user.id);
     const userName = conn.user.name || conn.user.verifiedName || "Desconocido";
-    // MEJORA DE COLORES PARA CONEXIÓN ABIERTA
-    console.log(chalk.bold.hex('#32CD32')(`[ CONECTADO ] Conectado a: ${userName} (${userJid.split('@')[0]})`));
+    console.log(consoleSuccess(`\n:: CONEXIÓN ESTABLECIDA ::`));
+    console.log(consoleSuccess(`> Bot: ${userName}`));
+    console.log(consoleSuccess(`> ID: ${userJid.split('@')[0]}\n`));
   }
   let reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
   if (connection === 'close') {
     if (reason === DisconnectReason.badSession) {
-      console.log(chalk.bold.hex('#FFD700')(`\n⚠︎ Sesión inválida o corrupta. Por favor, borre la sesión y vuelva a conectar.`)); // Dorado
+      console.log(consoleError(`:: ERROR :: Sesión corrupta. Elimine ${global.sessions}/creds.json y reinicie.`));
     } else if (reason === DisconnectReason.connectionClosed) {
-      console.log(chalk.bold.hex('#00FFFF')(`\n♻ Conexión cerrada. Intentando reconectar...`)); // Aqua
+      console.log(consoleWarning(`:: RECONEXIÓN :: Conexión cerrada. Intentando restaurar...`));
       await global.reloadHandler(true).catch(console.error);
     } else if (reason === DisconnectReason.connectionLost) {
-      console.log(chalk.bold.hex('#8A2BE2')(`\n⚠︎ Conexión perdida con el servidor. Reconectando...`)); // Azul Violeta
+      console.log(consoleWarning(`:: RECONEXIÓN :: Conexión perdida. Restaurando...`));
       await global.reloadHandler(true).catch(console.error);
     } else if (reason === DisconnectReason.connectionReplaced) {
-      console.log(chalk.bold.hex('#FF4500')(`\n⚠︎ Conexión reemplazada por otra sesión activa. Cierre la otra sesión.`)); // Rojo Anaranjado
+      console.log(consoleError(`:: ALERTA :: Sesión reemplazada. Otra instancia conectada.`));
     } else if (reason === DisconnectReason.loggedOut) {
-      console.log(chalk.bold.hex('#FF0000')(`\n⚠︎ Sesión cerrada. Por favor, borre la sesión y vuelva a conectar.`)); // Rojo
+      console.log(consoleError(`:: SESIÓN CERRADA :: Sesión finalizada. Reinicie y vincule de nuevo.`));
       await global.reloadHandler(true).catch(console.error);
     } else if (reason === DisconnectReason.restartRequired) {
-      console.log(chalk.bold.hex('#00BFFF')(`\n♻ Reinicio requerido. Reconectando el Bot...`)); // Azul Profundo
+      console.log(consoleInfo(`:: REINICIO :: Reinicio de proceso requerido...`));
       await global.reloadHandler(true).catch(console.error);
     } else if (reason === DisconnectReason.timedOut) {
-      console.log(chalk.bold.hex('#FFA500')(`\n♻ Conexión agotada. Reconectando...`)); // Naranja
+      console.log(consoleWarning(`:: RECONEXIÓN :: Tiempo de espera agotado. Restaurando...`));
       await global.reloadHandler(true).catch(console.error);
     } else {
-      console.log(chalk.bold.hex('#FF00FF')(`\n⚠︎ Conexión cerrada por razón desconocida (${reason}). Reconectando.`)); // Magenta
+      console.log(consoleError(`:: ERROR DESCONOCIDO :: Cierre por razón (${reason}). Intentando reconectar...`));
     }
   }
 }
@@ -397,9 +397,9 @@ global.reloadHandler = async function(restatConn) {
   return true;
 };
 setInterval(() => {
-  console.log(chalk.bold.hex('#FFD700')('[ REINICIO ] Reiniciando el proceso del Bot...'));
+  console.log(consoleWarning('[ MANTENIMIENTO ] Reiniciando el proceso por ciclo de 3 horas...'));
   process.exit(0);
-}, 10800000); // 3 horas
+}, 10800000);
 let rtU = join(__dirname, `./${jadi}`);
 if (!existsSync(rtU)) {
   mkdirSync(rtU, { recursive: true });
@@ -409,9 +409,9 @@ global.rutaJadiBot = join(__dirname, `./${jadi}`);
 if (global.Jadibts) {
   if (!existsSync(global.rutaJadiBot)) {
     mkdirSync(global.rutaJadiBot, { recursive: true });
-    console.log(chalk.bold.hex('#00BFFF')(`La carpeta: ${jadi} se creó correctamente.`));
+    console.log(consoleInfo(`[ JB INIT ] Carpeta: ${jadi} creada.`));
   } else {
-    console.log(chalk.bold.hex('#00BFFF')(`La carpeta: ${jadi} ya está creada.`));
+    console.log(consoleInfo(`[ JB INIT ] Carpeta: ${jadi} ya existe.`));
   }
   const readRutaJadiBot = readdirSync(rutaJadiBot);
   if (readRutaJadiBot.length > 0) {
@@ -420,7 +420,7 @@ if (global.Jadibts) {
       const botPath = join(rutaJadiBot, gjbts);
       const readBotPath = readdirSync(botPath);
       if (readBotPath.includes(creds)) {
-        JadiBot({ pathJadiBot: botPath, m: null, conn, args: '', usedPrefix: '/', command: 'serbot' });
+        assistant_accessJadiBot({ pathAssistantAccess: botPath, m: null, conn, args: '', usedPrefix: '/', command: 'serbot' });
       }
     }
   }
@@ -444,7 +444,7 @@ async function readRecursive(folder) {
         const module = await import(global.__filename(file));
         global.plugins[pluginPath] = module.default || module;
       } catch (e) {
-        conn.logger.error(`Error al cargar el plugin '${filename}':`);
+        conn.logger.error(consoleError(`[ PLUGIN ERROR ] Falló al cargar '${filename}':`));
         conn.logger.error(e);
         delete global.plugins[filename];
       }
@@ -459,27 +459,27 @@ async function filesInit() {
 filesInit().then((_) => Object.keys(global.plugins)).catch(console.error);
 
 global.reload = async (_ev, filename) => {
-  const pluginPath = filename.replace(pluginFolder + '/', ''); // Usar la ruta completa
+  const pluginPath = filename.replace(pluginFolder + '/', '');
   if (pluginFilter(filename)) {
     const dir = global.__filename(join(pluginFolder, filename), true);
     if (pluginPath in global.plugins) {
-      if (existsSync(dir)) conn.logger.info(chalk.bold.hex('#FFA500')(`Plugin actualizado - '${pluginPath}'`));
+      if (existsSync(dir)) conn.logger.info(consoleAccent(`[ PLUGIN UPDATE ] '${pluginPath}' actualizado.`));
       else {
-        conn.logger.warn(chalk.bold.hex('#FF6347')(`Plugin eliminado - '${pluginPath}'`));
+        conn.logger.warn(consoleWarning(`[ PLUGIN REMOVE ] '${pluginPath}' eliminado.`));
         return delete global.plugins[pluginPath];
       }
-    } else conn.logger.info(chalk.bold.hex('#32CD32')(`Nuevo plugin - '${pluginPath}'`));
+    } else conn.logger.info(consoleSuccess(`[ PLUGIN NEW ] Nuevo plugin '${pluginPath}' detectado.`));
     const err = syntaxerror(readFileSync(dir), filename, {
       sourceType: 'module',
       allowAwaitOutsideFunction: true,
     });
-    if (err) conn.logger.error(chalk.bold.hex('#FF0000')(`Error de sintaxis al cargar '${pluginPath}'\n${format(err)}`));
+    if (err) conn.logger.error(consoleError(`[ SYNTAX ERROR ] Error al cargar '${pluginPath}'\n${format(err)}`));
     else {
       try {
         const module = (await import(`${global.__filename(dir)}?update=${Date.now()}`));
         global.plugins[pluginPath] = module.default || module;
       } catch (e) {
-        conn.logger.error(chalk.bold.hex('#FF4500')(`Error al requerir plugin '${pluginPath}\n${format(e)}'`));
+        conn.logger.error(consoleError(`[ LOAD ERROR ] Error al requerir plugin '${pluginPath}\n${format(e)}'`));
       } finally {
         global.plugins = Object.fromEntries(Object.entries(global.plugins).sort(([a], [b]) => a.localeCompare(b)));
       }
@@ -554,12 +554,12 @@ function purgeSessionSB() {
       }
     });
     if (SBprekey.length === 0) {
-      console.log(chalk.bold.hex('#32CD32')(`\n[ OK ] No hay archivos en ${jadi} para eliminar.`));
+      console.log(consoleInfo(`[ LIMPIEZA SB ] No hay archivos temporales en ${jadi}.`));
     } else {
-      console.log(chalk.bold.hex('#00BFFF')(`\n[ OK ] Archivos de la carpeta ${jadi} han sido eliminados correctamente.`));
+      console.log(consoleAccent(`[ LIMPIEZA SB ] Archivos temporales de ${jadi} eliminados.`));
     }
   } catch (err) {
-    console.log(chalk.bold.hex('#FF4500')(`\n[ ERROR ] Error para eliminar archivos de la carpeta ${jadi}.\n` + err));
+    console.log(consoleError(`[ ERROR LIMPIEZA SB ] Fallo al eliminar archivos de ${jadi}.\n` + err));
   }
 }
 
@@ -573,9 +573,9 @@ function purgeOldFiles() {
           const filePath = path.join(dir, file);
           unlinkSync(filePath, err => {
             if (err) {
-              console.log(chalk.bold.hex('#FF4500')(`\n[ ERROR ] El archivo ${file} no se logró borrar.\n` + err));
+              console.log(consoleError(`[ ERROR LIMPIEZA ] No se pudo borrar ${file}.\n` + err));
             } else {
-              console.log(chalk.bold.hex('#32CD32')(`\n[ OK ] El archivo ${file} se ha borrado correctamente.`));
+              console.log(consoleSuccess(`[ LIMPIEZA ] Archivo ${file} borrado.`));
             }
           });
         }
@@ -596,12 +596,12 @@ function redefineConsoleMethod(methodName, filterStrings) {
 setInterval(async () => {
   if (stopped === 'close' || !conn || !conn.user) return;
   await clearTmp();
-  console.log(chalk.bold.hex('#00FFFF')(`\n[ LIMPIEZA ] Archivos de la carpeta TMP no necesarios han sido eliminados del servidor.`));
+  console.log(consoleInfo(`[ LIMPIEZA TMP ] Archivos temporales no necesarios han sido eliminados.`));
 }, 1000 * 60 * 4);
 setInterval(async () => {
   if (stopped === 'close' || !conn || !conn.user) return;
   await purgeSession();
-  console.log(chalk.bold.hex('#00FFFF')(`\n[ LIMPIEZA ] Archivos de la carpeta ${global.sessions} no necesario han sido eliminados del servidor.`));
+  console.log(consoleInfo(`[ LIMPIEZA SESIÓN ] Archivos pre-key de ${global.sessions} eliminados.`));
 }, 1000 * 60 * 10);
 setInterval(async () => {
   if (stopped === 'close' || !conn || !conn.user) return;
@@ -610,7 +610,7 @@ setInterval(async () => {
 setInterval(async () => {
   if (stopped === 'close' || !conn || !conn.user) return;
   await purgeOldFiles();
-  console.log(chalk.bold.hex('#00FFFF')(`\n[ LIMPIEZA ] Archivos no necesario han sido eliminados del servidor.`));
+  console.log(consoleInfo(`[ LIMPIEZA GENERAL ] Archivos antiguos eliminados.`));
 }, 1000 * 60 * 10);
 _quickTest().catch(console.error);
 async function isValidPhoneNumber(number) {
