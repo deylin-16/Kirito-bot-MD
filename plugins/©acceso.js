@@ -110,13 +110,13 @@ export async function ConnectAdditionalSession(options) {
     const msgRetry = (MessageRetryMap) => { }
     let { state, saveCreds } = await useMultiFileAuthState(pathSubSession) 
 
-    // **CORRECCIÓN APLICADA AQUÍ**
+    // **CORRECCIÓN 1: Evita el TypeError de 'getMessage'**
     const getMessageFunction = (conn && conn.options && conn.options.getMessage) ? conn.options.getMessage : undefined;
     
     const connectionOptions = {
         logger: logger,
         printQRInTerminal: false,
-        mobile: true, 
+        mobile: false, // **CORRECCIÓN 2: Evita el error 'Mobile API is not supported anymore'**
         auth: { 
             creds: state.creds, 
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" }))
