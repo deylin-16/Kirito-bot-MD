@@ -106,10 +106,10 @@ export async function startAssistant(options) {
         auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'silent'})) },
         msgRetry,
         msgRetryCache,
-        browser: ['Ubuntu', 'Chrome', '120.0.6099.199'], // Configuración del browser actualizada
+        browser: ['Ubuntu', 'Chrome', '120.0.6099.199'],
         version: version,
         generateHighQualityLinkPreview: true,
-        defaultQueryTimeoutMs: 60000 // Timeout aumentado a 60 segundos
+        defaultQueryTimeoutMs: 60000 
     };
     
     let sock = makeWASocket(connectionOptions)
@@ -132,14 +132,36 @@ export async function startAssistant(options) {
             
             secret = secret.match(/.{1,4}/g)?.join("-");
             
-            const codeMessage = `Tu código para vincular es:\n→ **${secret}**\n\nCódigo expira en 30s ⏳\n\n*Recuerda vincular usando la opción 'Vincular con número de teléfono' en WhatsApp.*`;
+            const codeMessage = `*¡Atención! Proceso de vinculación iniciado.*\n\n*Recuerda vincular usando la opción 'Vincular con número de teléfono' en WhatsApp.*`;
             
-            txtCode = await conn.sendMessage(m.chat, { text: codeMessage }, { quoted: m });
-            
+            const msg = generateWAMessageFromContent(m.chat, proto.Message.fromObject({
+                interactiveMessage: {
+                    body: { text: `𝗧𝘂 𝗰𝗼𝗱𝗶𝗴𝗼 𝗽𝗮𝗿𝗮 𝘃𝗶𝗻𝗰𝘂𝗹𝗮𝗿 𝗲𝘀:\n⇶ ${secret}` }, 
+                    footer: { text: `Código expira en 30s ⏳` },
+                    nativeFlowMessage: {
+                        buttons: [
+                            {
+                                name: 'cta_copy',
+                                buttonParamsJson: JSON.stringify({
+                                    display_text: `COPIAR CÓDIGO`,
+                                    copy_code: secret
+                                })
+                            }
+                        ]
+                    }
+                }
+            }), { quoted: m });
+
+            txtCode = await conn.sendMessage(m.chat, { text: codeMessage }, { quoted: m }); 
+            codeBot = await conn.relayMessage(m.chat, msg.message, { messageId: msg.key.id });
+
             console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${phoneNumber} -> ${secret}\n`));
             
             if (txtCode && txtCode.key) {
                 setTimeout(() => { conn.sendMessage(m.chat, { delete: txtCode.key })}, 30000);
+            }
+            if (codeBot && codeBot.key) {
+                 setTimeout(() => { conn.sendMessage(m.chat, { delete: codeBot.key })}, 30000);
             }
             
         } catch (error) {
