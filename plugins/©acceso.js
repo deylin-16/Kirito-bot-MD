@@ -95,7 +95,8 @@ export async function startAssistant(options) {
         conn.reply(m.chat, `Use correctamente el comando » ${usedPrefix + command} (número) (código base64 opcional)`, m)
         return
     }
-    let { version, isLatest } = await fetchLatestBaileysVersion()
+    // Nota: Eliminamos fetchLatestBaileysVersion() y forzamos la versión en connectionOptions
+    const version = [2, 3000, 1015901307] 
     const msgRetry = (MessageRetryMap) => { }
     const msgRetryCache = new NodeCache()
     const { state, saveState, saveCreds } = await useMultiFileAuthState(pathAssistant)
@@ -106,8 +107,8 @@ export async function startAssistant(options) {
         auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'silent'})) },
         msgRetry,
         msgRetryCache,
-        browser: ['Ubuntu', 'Chrome', '120.0.6099.199'],
-        version: version,
+        // Browser eliminado para usar el por defecto de Baileys
+        version: version, 
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: 60000 
     };
