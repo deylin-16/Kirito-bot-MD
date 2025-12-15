@@ -18,6 +18,8 @@ global.fetch = fetch
 global.axios = axios
 global.moment = moment 
 global.sessions = 'sessions'
+global.jadi = 'sessions_sub_assistant';
+
 
 let Names = [
     'ᴊɪᴊɪ - ᴀssɪsᴛᴀɴᴛ', 
