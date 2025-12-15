@@ -98,9 +98,11 @@ export async function startAssistant(options) {
     const msgRetry = (MessageRetryMap) => { }
     const msgRetryCache = new NodeCache()
     const { state, saveState, saveCreds } = await useMultiFileAuthState(pathAssistant)
+    
+    // **NOTA IMPORTANTE:** printQRInTerminal debe ser 'false' para usar Pairing Code
     const connectionOptions = {
         logger: pino({ level: "fatal" }),
-        printQRInTerminal: false,
+        printQRInTerminal: false, 
         auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'silent'})) },
         msgRetry,
         msgRetryCache,
@@ -115,15 +117,27 @@ export async function startAssistant(options) {
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
         if (isNewLogin) sock.isInit = false
-        if (qr) return 
         
+        // Si hay QR disponible, y las credenciales NO existen, se asume QR.
+        if (qr && !sock.authState.creds.me) {
+            // Aquí puedes decidir si quieres enviar el QR o no.
+            // Si quieres forzar el código de emparejamiento, no hacemos nada aquí.
+            console.log(chalk.yellow(`[DEBUG] QR generado, pero estamos forzando el código de emparejamiento (Pairing Code).`));
+        }
+
         if (connection === 'connecting') {
-            if (!sock.authState.creds.me) {
+            // Solo si NO tenemos credenciales (es la primera vez que inicia)
+            if (!sock.authState.creds.me) { 
                 try {
+                    // **AQUÍ ESTÁ LA LÍNEA CRÍTICA**
                     let secret = await sock.requestPairingCode(targetJid.split`@`[0])
                     secret = secret.match(/.{1,4}/g)?.join("-")
-                    txtCode = await conn.reply(m.chat, `Tu código para vincular es:\n→ ${secret}\n\nCódigo expira en 30s ⏳`, m)
+                    
+                    // Solo envías el código de texto
+                    txtCode = await conn.reply(m.chat, `Tu código para vincular es:\n→ **${secret}**\n\nCódigo expira en 30s ⏳\n\n*Recuerda vincular usando la opción 'Vincular con número de teléfono' en WhatsApp.*`, m)
+                    
                     console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${targetJid.split('@')[0]} -> ${secret}\n`))
+                    
                     if (txtCode && txtCode.key) {
                         setTimeout(() => { conn.sendMessage(m.sender, { delete: txtCode.key })}, 30000)
                     }
