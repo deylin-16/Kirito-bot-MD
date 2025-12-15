@@ -93,14 +93,14 @@ JBOptions.usedPrefix = usedPrefix
 JBOptions.command = command
 JBOptions.fromCommand = true
 JBOptions.targetJid = who 
-startAssistant(JBOptions)
+startAssistant(JBOptions) // Cambiado de JadiBot a startAssistant
 global.db.data.users[m.sender].Subs = new Date * 1
 } 
 handler.help = ['conectar']
 handler.tags = ['assistant']
 handler.command = ['conectar']
 export default handler 
-export async function startAssistant(options) {
+export async function startAssistant(options) { // Cambiado de JadiBot a startAssistant
 let { pathAssistant, m, conn, args, usedPrefix, command, targetJid } = options
 let txtCode, codeBot
 const pathCreds = path.join(pathAssistant, "creds.json")
