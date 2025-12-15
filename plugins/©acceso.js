@@ -108,12 +108,15 @@ export async function ConnectAdditionalSession(options) {
 
     let { version } = await fetchLatestBaileysVersion()
     const msgRetry = (MessageRetryMap) => { }
-    let { state, saveCreds } = await useMultiFileAuthState(pathSubSession) // Usamos 'let' para reasignar si es necesario
+    let { state, saveCreds } = await useMultiFileAuthState(pathSubSession) 
 
+    // **CORRECCIÓN APLICADA AQUÍ**
+    const getMessageFunction = (conn && conn.options && conn.options.getMessage) ? conn.options.getMessage : undefined;
+    
     const connectionOptions = {
         logger: logger,
         printQRInTerminal: false,
-        mobile: true, // Forzar uso de Pairing Code
+        mobile: true, 
         auth: { 
             creds: state.creds, 
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" }))
@@ -124,16 +127,15 @@ export async function ConnectAdditionalSession(options) {
         version: version,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: undefined,
-        getMessage: conn.options.getMessage, 
+        getMessage: getMessageFunction, 
     };
 
     let sock = makeWASocket(connectionOptions)
     sock.isInit = false
     let isInit = true
     let codeSent = false 
-    sock.authState = { path: pathSubSession, creds: state.creds } // Guardar creds para acceso rápido
+    sock.authState = { path: pathSubSession, creds: state.creds } 
 
-    // Función para solicitar el código de emparejamiento
     const requestCode = async () => {
         if (!sock.authState.creds.registered && !codeSent) {
             console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Solicitando Pairing Code para +${folderId}...`));
@@ -147,8 +149,7 @@ export async function ConnectAdditionalSession(options) {
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para +${folderId}:`, e);
-                // Si falla al pedir código, no es necesario reconectar, el flujo de 'close' lo manejará.
-                // Si el error es temporal (428/conexión cerrada), se reintentará en el flujo 'close'.
+
             }
         }
     }
@@ -160,7 +161,6 @@ export async function ConnectAdditionalSession(options) {
         if (isNewLogin) sock.isInit = false
 
 
-        // Pide el código inmediatamente después de la conexión inicial
         if (connection === 'connecting' && isInit) {
              console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Conectando para +${folderId}. Preparando solicitud de código...`));
         }
@@ -169,7 +169,6 @@ export async function ConnectAdditionalSession(options) {
             let userName = sock.authState.creds.me.name || 'Anónimo'
             console.log(chalk.bold.cyanBright(` 🪐 ${userName} (+${folderId}) CONECTADO exitosamente.`))
 
-            // Si se registra por primera vez o si se reabre la conexión antes de registrarse
             if (!sock.authState.creds.registered && !codeSent) {
                  await requestCode();
             } else if (sock.authState.creds.registered) {
@@ -178,7 +177,7 @@ export async function ConnectAdditionalSession(options) {
                 }
                 if (codeSent) { 
                     await conn.reply(m.chat, `🎉 *Sesión ID: ${folderId}* vinculada y activa.`, m);
-                    codeSent = false; // Resetear después de notificar éxito
+                    codeSent = false; 
                 }
             }
             sock.isInit = true
@@ -226,7 +225,6 @@ export async function ConnectAdditionalSession(options) {
             try { sock.ws.close() } catch { }
             sock.ev.removeAllListeners()
             
-            // Re-leer el estado de autenticación al reconectar
             ({ state, saveCreds } = await useMultiFileAuthState(pathSubSession)) 
             connectionOptions.auth = { 
                 creds: state.creds, 
@@ -235,7 +233,7 @@ export async function ConnectAdditionalSession(options) {
 
             sock = makeWASocket(connectionOptions, { chats: oldChats }) 
             sock.isInit = false
-            sock.authState = { path: pathSubSession, creds: state.creds } // Actualizar creds
+            sock.authState = { path: pathSubSession, creds: state.creds } 
             isInit = true
             
             sock.credsUpdate = saveCreds.bind(sock, true)
@@ -260,7 +258,6 @@ export async function ConnectAdditionalSession(options) {
         sock.ev.on("creds.update", sock.credsUpdate)
         isInit = false
 
-        // Solicitar el código al finalizar el reload si aún no está registrado
         if (!sock.authState.creds.registered) {
              await requestCode();
         }
