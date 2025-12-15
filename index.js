@@ -141,6 +141,8 @@ version,
 }
 
 global.conn = makeWASocket(connectionOptions);
+global.additionalConns = global.additionalConns || [];
+
 
 if (!fs.existsSync(`./${sessions}/creds.json`)) {
 if (opcion === '2' || methodCode) {
@@ -214,6 +216,12 @@ await global.reloadHandler(true).catch(console.error)
 } else {
 console.log(chalk.bold.redBright(`\n⚠︎！ RAZON DE DESCONEXIÓN DESCONOCIDA: ${reason || 'No encontrado'} >> ${connection || 'No encontrado'}`))
 }}
+
+for (const additionalConn of global.additionalConns) {
+    if (additionalConn.connectionUpdate) {
+        additionalConn.connectionUpdate(update);
+    }
+}
 }
 process.on('uncaughtException', console.error)
 
@@ -239,6 +247,12 @@ if (!isInit) {
 conn.ev.off('messages.upsert', conn.handler)
 conn.ev.off('connection.update', conn.connectionUpdate)
 conn.ev.off('creds.update', conn.credsUpdate)
+
+for (const additionalConn of global.additionalConns) {
+    if (additionalConn.handler) additionalConn.ev.off('messages.upsert', additionalConn.handler);
+    if (additionalConn.connectionUpdate) additionalConn.ev.off('connection.update', additionalConn.connectionUpdate);
+    if (additionalConn.credsUpdate) additionalConn.ev.off('creds.update', additionalConn.credsUpdate);
+}
 }
 
 conn.handler = handler.handler.bind(global.conn)
