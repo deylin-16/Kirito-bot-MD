@@ -141,7 +141,9 @@ version,
 }
 
 global.conn = makeWASocket(connectionOptions);
-global.additionalConns = global.additionalConns || [];
+// Inicialización de global.additionalConns para las sub-sesiones
+if (global.additionalConns instanceof Array) console.log()
+else global.additionalConns = []
 
 
 if (!fs.existsSync(`./${sessions}/creds.json`)) {
