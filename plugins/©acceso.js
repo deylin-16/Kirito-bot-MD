@@ -25,7 +25,7 @@ function isSubBotConnected(jid) { return global.conns.some(sock => sock?.user?.j
 let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
 if (!globalThis.db.data.settings[conn.user.jid].jadibotmd) return m.reply(`El comando *${command}* está desactivado.`)
 let time = global.db.data.users[m.sender].Subs + 120000
-if (new Date - global.db.data.users[m.sender].Subs < 120000) return conn.reply(m.chat, `Debes esperar ${msToTime(time - new Date())} para volver a vincular un Sub-Bot.`, m)
+//if (new Date - global.db.data.users[m.sender].Subs < 120000) return conn.reply(m.chat, `Debes esperar ${msToTime(time - new Date())} para volver a vincular un Sub-Bot.`, m)
 let socklimit = global.conns.filter(sock => sock?.user).length
 if (socklimit >= 50) {
 return m.reply(`No se han encontrado espacios para Sub-Bots disponibles.`)
