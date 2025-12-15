@@ -1,16 +1,15 @@
 import qrcode from "qrcode"
 import NodeCache from "node-cache"
-import fs, { readdirSync, statSync, unlinkSync, existsSync, mkdirSync, readFileSync, rmSync, watch } from "fs"
-import path from "path"
+import fs, { rmdirSync } from "fs"
+import path, { dirname } from "path"
 import pino from 'pino'
 import chalk from 'chalk'
 import * as ws from 'ws'
 import { makeWASocket } from '../lib/simple.js'
 import { fileURLToPath } from 'url'
 import * as baileys from "@whiskeysockets/baileys" 
-import { fork } from 'child_process' 
-import { rmdirSync } from 'fs'; 
-import { loadDatabase } from '../index.js'; // Importar loadDatabase
+// Importar loadDatabase desde el índice principal
+import { loadDatabase } from '../index.js'; 
 
 let mainHandlerModule = await import('../handler.js').catch(e => console.error('Error al cargar handler principal:', e))
 let mainHandlerFunction = mainHandlerModule?.handler || (() => {})
@@ -23,11 +22,10 @@ const {
 } = baileys; 
 
 const logger = pino({ level: "fatal" }) 
-const { CONNECTING } = ws
 const SESSIONS_FOLDER = 'assistant_access' 
 
 const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = dirname(__filename)
 
 if (global.additionalConns instanceof Array) console.log()
 else global.additionalConns = []
@@ -115,14 +113,14 @@ export async function ConnectAdditionalSession(options) {
     const connectionOptions = {
         logger: logger,
         printQRInTerminal: false,
-        // **IMPORTANTE**: No usar 'mobile: true' ni 'mobile: false'
+        mobile: false, // Aseguramos que no use la API móvil obsoleta
         auth: { 
             creds: state.creds, 
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" }))
         },
         msgRetry,
         msgRetryCache,
-        browser: [`Sesión Adicional ${folderId}`, 'Chrome','20.0.04'],
+        browser: ['Ubuntu', 'Chrome', '109.0.5414.0'], // Configuración de browser estándar
         version: version,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: undefined,
@@ -135,15 +133,13 @@ export async function ConnectAdditionalSession(options) {
     let codeSent = false 
     sock.authState = { path: pathSubSession, creds: state.creds } 
 
-    // Aquí ya no necesitamos requestCode(), la lógica se mueve a connectionUpdate como en el código funcional.
-
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
 
         if (isNewLogin) sock.isInit = false
 
-        // **CORRECCIÓN DE EMPAREJAMIENTO** (Similar al código funcional)
+        
         if (connection === 'connecting' && !sock.authState.creds.registered && !codeSent) {
              console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Conectando para +${folderId}. Solicitando código de emparejamiento...`));
              try {
@@ -151,12 +147,15 @@ export async function ConnectAdditionalSession(options) {
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
-                await conn.reply(m.chat, `**CÓDIGO DE VINCULACIÓN (+${folderId})**:\n\n*${secret}*`, m)
+                // Notificar al chat principal del código generado
+                await conn.reply(m.chat, `**CÓDIGO DE VINCULACIÓN (+${folderId})**:\n\n*${secret}*\n\n_Dirígete a tu móvil: Dispositivos Vinculados > Vincular con el número de teléfono, e introduce este código._`, m)
 
                 console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO FUNCIONAL (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para +${folderId}:`, e);
+                // Si falla al pedir el código, forzamos la reconexión.
+                return creloadHandler(true).catch(console.error)
             }
         }
         
@@ -168,6 +167,7 @@ export async function ConnectAdditionalSession(options) {
                 if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
                     global.additionalConns.push(sock)
                 }
+                // Si se registró exitosamente y ya se había enviado el código, notificar la vinculación
                 if (codeSent) { 
                     await conn.reply(m.chat, `🎉 *Sesión ID: ${folderId}* vinculada y activa.`, m);
                     codeSent = false; 
@@ -179,11 +179,15 @@ export async function ConnectAdditionalSession(options) {
         if (connection === 'close') {
             const reason = lastDisconnect?.error?.output?.statusCode; 
 
+            // Razones que requieren RECONEXIÓN (conexión temporalmente perdida)
             const shouldReconnect = [
                 DisconnectReason.timedOut,    
                 DisconnectReason.connectionClosed, 
                 DisconnectReason.connectionLost, 
                 DisconnectReason.restartRequired, 
+                428, // Código de WhatsApp/Baileys para conexión rechazada temporalmente
+                500, // Error interno del servidor, generalmente reintenta
+                515, // Reintentar
             ].includes(reason);
 
             if (shouldReconnect) {
@@ -192,16 +196,21 @@ export async function ConnectAdditionalSession(options) {
                 return creloadHandler(true).catch(console.error)
             } 
 
-            if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405 || reason === DisconnectReason.badSession) {
+            // Razones que requieren CIERRE PERMANENTE Y ELIMINACIÓN DE DATOS (sesión inválida)
+            if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405 || reason === DisconnectReason.badSession || reason === 403) {
                 console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA/INVALIDA (+${folderId}). Borrando datos.`))
 
+                // Borrar la carpeta de credenciales para evitar reintentos fallidos
                 rmdirSync(pathSubSession, { recursive: true })
 
                 const activeConnIndex = global.additionalConns.findIndex(c => c.authState.path === pathSubSession);
                 if (activeConnIndex !== -1) {
+                    // Remover la conexión de la lista global
                     global.additionalConns.splice(activeConnIndex, 1);
                 }
-                conn.reply(m.chat, `⚠️ La sesión ${folderId} ha sido cerrada permanentemente. Por favor, re-vincule si es necesario.`, m)
+                
+                // NOTIFICACIÓN: Ya que el socket está cerrado, usamos el 'conn' principal para notificar.
+                conn.reply(m.chat, `⚠️ La sesión ${folderId} ha sido cerrada permanentemente (Razón: ${reason}). Por favor, re-vincule si es necesario.`, m)
             }
              codeSent = false;
         }
