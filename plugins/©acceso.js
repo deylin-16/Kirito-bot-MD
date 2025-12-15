@@ -81,11 +81,11 @@ if (subBotsCount === 21) {
 return conn.reply(m.chat, `No se han encontrado espacios para assistants disponibles. Espera a que un assistant se desconecte e intenta más tarde.`, m, racnal)
 }
 let id = `${number}`
-let pathAssistant = path.join(`./assistant/`, id) // ***RENOMBRADO***
+let pathAssistant = path.join(`./assistant/`, id)
 if (!fs.existsSync(pathAssistant)){
 fs.mkdirSync(pathAssistant, { recursive: true })
 }
-JBOptions.pathAssistant = pathAssistant // ***RENOMBRADO***
+JBOptions.pathAssistant = pathAssistant
 JBOptions.m = m
 JBOptions.conn = conn
 JBOptions.args = args
@@ -93,19 +93,19 @@ JBOptions.usedPrefix = usedPrefix
 JBOptions.command = command
 JBOptions.fromCommand = true
 JBOptions.targetJid = who 
-JadiBot(JBOptions)
+startAssistant(JBOptions)
 global.db.data.users[m.sender].Subs = new Date * 1
 } 
 handler.help = ['conectar']
 handler.tags = ['assistant']
 handler.command = ['conectar']
 export default handler 
-export async function JadiBot(options) {
-let { pathAssistant, m, conn, args, usedPrefix, command, targetJid } = options // ***RENOMBRADO***
+export async function startAssistant(options) {
+let { pathAssistant, m, conn, args, usedPrefix, command, targetJid } = options
 let txtCode, codeBot
-const pathCreds = path.join(pathAssistant, "creds.json") // ***RENOMBRADO***
-if (!fs.existsSync(pathAssistant)){ // ***RENOMBRADO***
-fs.mkdirSync(pathAssistant, { recursive: true })} // ***RENOMBRADO***
+const pathCreds = path.join(pathAssistant, "creds.json")
+if (!fs.existsSync(pathAssistant)){
+fs.mkdirSync(pathAssistant, { recursive: true })}
 try {
 args[1] && args[1] != undefined ? fs.writeFileSync(pathCreds, JSON.stringify(JSON.parse(Buffer.from(args[1], "base64").toString("utf-8")), null, '\t')) : ""
 } catch {
@@ -118,7 +118,7 @@ const drmer = Buffer.from(drm1 + drm2, `base64`)
 let { version, isLatest } = await fetchLatestBaileysVersion()
 const msgRetry = (MessageRetryMap) => { }
 const msgRetryCache = new NodeCache()
-const { state, saveState, saveCreds } = await useMultiFileAuthState(pathAssistant) // ***RENOMBRADO***
+const { state, saveState, saveCreds } = await useMultiFileAuthState(pathAssistant)
 const connectionOptions = {
 logger: pino({ level: "fatal" }),
 printQRInTerminal: false,
@@ -188,49 +188,49 @@ global.conns.splice(i, 1)
 const reason = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
 if (connection === 'close') {
 if (reason === 428) {
-console.log(chalk.rgb(255, 165, 0)(`\nLa conexión (+${path.basename(pathAssistant)}) fue cerrada inesperadamente. Intentando reconectar...`)) // ***RENOMBRADO***
+console.log(chalk.rgb(255, 165, 0)(`\nLa conexión (+${path.basename(pathAssistant)}) fue cerrada inesperadamente. Intentando reconectar...`))
 await creloadHandler(true).catch(console.error)
 }
 if (reason === 408) {
-console.log(chalk.rgb(255, 165, 0)(`\nLa conexión (+${path.basename(pathAssistant)}) se perdió o expiró. Razón: ${reason}. Intentando reconectar...`)) // ***RENOMBRADO***
+console.log(chalk.rgb(255, 165, 0)(`\nLa conexión (+${path.basename(pathAssistant)}) se perdió o expiró. Razón: ${reason}. Intentando reconectar...`))
 await creloadHandler(true).catch(console.error)
 }
 if (reason === 440) {
-console.log(chalk.rgb(255, 165, 0)(`\nLa conexión (+${path.basename(pathAssistant)}) fue reemplazada por otra sesión activa.`)) // ***RENOMBRADO***
+console.log(chalk.rgb(255, 165, 0)(`\nLa conexión (+${path.basename(pathAssistant)}) fue reemplazada por otra sesión activa.`))
 try {
-if (options.fromCommand) m?.chat ? await conn.sendMessage(`${path.basename(pathAssistant)}@s.whatsapp.net`, {text : 'HEMOS DETECTADO UNA NUEVA SESIÓN, BORRE LA NUEVA SESIÓN PARA CONTINUAR\n\n> SI HAY ALGÚN PROBLEMA VUELVA A CONECTARSE' }, { quoted: m || null }) : "" // ***RENOMBRADO***
+if (options.fromCommand) m?.chat ? await conn.sendMessage(`${path.basename(pathAssistant)}@s.whatsapp.net`, {text : 'HEMOS DETECTADO UNA NUEVA SESIÓN, BORRE LA NUEVA SESIÓN PARA CONTINUAR\n\n> SI HAY ALGÚN PROBLEMA VUELVA A CONECTARSE' }, { quoted: m || null }) : ""
 } catch (error) {
-console.error(chalk.rgb(255, 165, 0)(`Error 440 no se pudo enviar mensaje a: +${path.basename(pathAssistant)}`)) // ***RENOMBRADO***
+console.error(chalk.rgb(255, 165, 0)(`Error 440 no se pudo enviar mensaje a: +${path.basename(pathAssistant)}`))
 }}
 if (reason == 405 || reason == 401) {
-console.log(chalk.rgb(255, 165, 0)(`\nLa sesión (+${path.basename(pathAssistant)}) fue cerrada. Credenciales no válidas o dispositivo desconectado manualmente.`)) // ***RENOMBRADO***
+console.log(chalk.rgb(255, 165, 0)(`\nLa sesión (+${path.basename(pathAssistant)}) fue cerrada. Credenciales no válidas o dispositivo desconectado manualmente.`))
 try {
-if (options.fromCommand) m?.chat ? await conn.sendMessage(`${path.basename(pathAssistant)}@s.whatsapp.net`, {text : 'SESIÓN PENDIENTE\n\n> INTENTÉ NUEVAMENTE VOLVER A SER ASSISTANT' }, { quoted: m || null }) : "" 
+if (options.fromCommand) m?.chat ? await conn.sendMessage(`${path.basename(pathAssistant)}@s.whatsapp.net`, {text : 'SESIÓN PENDIENTE\n\n> INTENTÉ NUEVAMENTE VOLVER A SER ASSISTANT' }, { quoted: m || null }) : ""
 } catch (error) {
-console.error(chalk.rgb(255, 165, 0)(`Error 405 no se pudo enviar mensaje a: +${path.basename(pathAssistant)}`)) 
+console.error(chalk.rgb(255, 165, 0)(`Error 405 no se pudo enviar mensaje a: +${path.basename(pathAssistant)}`))
 }
-fs.rmdirSync(pathAssistant, { recursive: true }) 
+fs.rmdirSync(pathAssistant, { recursive: true })
 }
 if (reason === 500) {
-console.log(chalk.rgb(255, 165, 0)(`\nConexión perdida en la sesión (+${path.basename(pathAssistant)}). Borrando datos...`)) 
-if (options.fromCommand) m?.chat ? await conn.sendMessage(`${path.basename(pathAssistant)}@s.whatsapp.net`, {text : 'CONEXIÓN PÉRDIDA\n\n> INTENTÉ MANUALMENTE VOLVER A SER ASSISTANT' }, { quoted: m || null }) : "" 
+console.log(chalk.rgb(255, 165, 0)(`\nConexión perdida en la sesión (+${path.basename(pathAssistant)}). Borrando datos...`))
+if (options.fromCommand) m?.chat ? await conn.sendMessage(`${path.basename(pathAssistant)}@s.whatsapp.net`, {text : 'CONEXIÓN PÉRDIDA\n\n> INTENTÉ MANUALMENTE VOLVER A SER ASSISTANT' }, { quoted: m || null }) : ""
 return creloadHandler(true).catch(console.error)
 }
 if (reason === 515) {
-console.log(chalk.rgb(255, 165, 0)(`\nRinicio automático para la sesión (+${path.basename(pathAssistant)}).`)) 
+console.log(chalk.rgb(255, 165, 0)(`\nRinicio automático para la sesión (+${path.basename(pathAssistant)}).`))
 await creloadHandler(true).catch(console.error)
 }
 if (reason === 403) {
-console.log(chalk.rgb(255, 165, 0)(`\nSesión cerrada o cuenta en soporte para la sesión (+${path.basename(pathAssistant)}).`)) 
-fs.rmdirSync(pathAssistant, { recursive: true }) 
+console.log(chalk.rgb(255, 165, 0)(`\nSesión cerrada o cuenta en soporte para la sesión (+${path.basename(pathAssistant)}).`))
+fs.rmdirSync(pathAssistant, { recursive: true })
 }}
 if (global.db.data == null) loadDatabase()
 if (connection == `open`) {
 if (!global.db.data?.users) loadDatabase()
 let userName, userJid 
 userName = sock.authState.creds.me.name || 'Anónimo'
-userJid = sock.authState.creds.me.jid || `${path.basename(pathAssistant)}@s.whatsapp.net` 
-console.log(chalk.rgb(255, 165, 0)(`\nASSISTANT\n\n${userName} (+${path.basename(pathAssistant)}) conectado exitosamente.\n\nCONECTADO`)) 
+userJid = sock.authState.creds.me.jid || `${path.basename(pathAssistant)}@s.whatsapp.net`
+console.log(chalk.rgb(255, 165, 0)(`\nASSISTANT\n\n${userName} (+${path.basename(pathAssistant)}) conectado exitosamente.\n\nCONECTADO`))
 sock.isInit = true
 global.conns.push(sock)
 await joinChannels(sock)
@@ -239,7 +239,7 @@ Bienvenido @${m.sender.split('@')[0]}, a la familia de
  Assistant_Access disfruta del servicio.
  
  ${dev}
-`, mentions: [m.sender]}, { quoted: m }) : ''
+`, mentions: [m.sender]}, { quoted: fkontak1 }) : ''
 }}
 setInterval(async () => {
 if (!sock.user) {
