@@ -43,10 +43,10 @@ if (normalizedCommand === 'conectar') {
     let rawId = args[0] ? args[0].replace(/[^0-9]/g, '') : m.sender.split('@')[0].replace(/[^0-9]/g, '')
     if (rawId.length < 8) return conn.reply(m.chat, `⚠️ Proporcione un identificador válido para la sesión.`, m)
 
-    
+
     let sessionId = rawId.startsWith('+') ? rawId : `+${rawId}` 
     let folderId = rawId
-    
+
     const additionalConnsCount = global.additionalConns.length
     const MAX_SESSIONS = 30 
     if (additionalConnsCount >= MAX_SESSIONS) {
@@ -62,7 +62,7 @@ if (normalizedCommand === 'conectar') {
     if (!fs.existsSync(pathSubSession)){
         fs.mkdirSync(pathSubSession, { recursive: true })
     }
-    
+
     await conn.reply(m.chat, `⌛ Iniciando nueva sesión aislada para ID: *${folderId}*. Número a vincular: *${sessionId}*. Esperando código de emparejamiento...`, m);
 
     ConnectAdditionalSession({ pathSubSession, m, conn, usedPrefix, sessionId, folderId })
@@ -74,7 +74,7 @@ if (normalizedCommand === 'eliminar_conexion') {
     if (!folderId) return m.reply(`⚠️ Uso: *${usedPrefix}eliminar_conexion [ID de Sesión]*`);
 
     const pathSubSession = path.join(`./${SESSIONS_FOLDER}/`, folderId)
-    
+
     if (fs.existsSync(pathSubSession)) {
          try {
             const activeConnIndex = global.additionalConns.findIndex(c => path.basename(c.authState.path) === folderId);
@@ -104,7 +104,7 @@ export default handler
 
 export async function ConnectAdditionalSession(options) {
     let { pathSubSession, m, conn, usedPrefix, sessionId, folderId } = options
-    
+
     let { version } = await fetchLatestBaileysVersion()
     const msgRetry = (MessageRetryMap) => { }
     const { state, saveState, saveCreds } = await useMultiFileAuthState(pathSubSession)
@@ -128,32 +128,30 @@ export async function ConnectAdditionalSession(options) {
     sock.isInit = false
     let isInit = true
     let codeSent = false 
-    
-    
+    let codeRequested = false
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
 
         if (isNewLogin) sock.isInit = false
 
-        
-        if (qr && !codeSent && !sock.authState.creds.registered) {
+        if (connection === 'connecting' && !codeRequested && !sock.authState.creds.registered) {
             
-            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${folderId}. Llamando a requestPairingCode para ${sessionId}...`));
+            codeRequested = true
             
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Conexión en progreso para ${folderId}. Solicitando código de emparejamiento para ${sessionId}...`));
+
             try {
-               
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
-                
                 await conn.reply(m.chat, secret, m)
-                
+
                 console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO FUNCIONAL (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
                 codeSent = true 
             } catch (e) {
                 console.error(`Error al solicitar pairing code para ${folderId}:`, e);
-                
+
                 if (e.message.includes('Connection Closed') || e.message.includes('428')) {
                     await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${folderId}*...`, m);
                     sock.ws.close();
@@ -164,9 +162,10 @@ export async function ConnectAdditionalSession(options) {
             }
         } 
 
-        
+
         if (connection === 'close') {
             codeSent = false;
+            codeRequested = false;
             const reason = lastDisconnect?.error?.output?.statusCode; 
 
             const shouldReconnect = [
@@ -184,16 +183,16 @@ export async function ConnectAdditionalSession(options) {
 
             if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
                 console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA (+${folderId}). Borrando datos.`))
-                
+
                 fs.rmdirSync(pathSubSession, { recursive: true })
             }
         }
 
-        
+
         if (global.db.data == null) loadDatabase()
         if (connection == `open`) {
             let userName = sock.authState.creds.me.name || 'Anónimo'
-            
+
             console.log(chalk.bold.cyanBright(` 🪐 ${userName} (+${folderId}) CONECTADO exitosamente.`))
 
             sock.isInit = true
@@ -208,7 +207,7 @@ export async function ConnectAdditionalSession(options) {
 
     let creloadHandler = async function (restatConn) {
         let currentHandler = mainHandlerFunction 
-        
+
         if (restatConn) {
             const oldChats = sock.chats
             try { sock.ws.close() } catch { }
