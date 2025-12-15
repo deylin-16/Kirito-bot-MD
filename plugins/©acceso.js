@@ -99,7 +99,6 @@ export async function startAssistant(options) {
     const msgRetryCache = new NodeCache()
     const { state, saveState, saveCreds } = await useMultiFileAuthState(pathAssistant)
     
-    // **NOTA IMPORTANTE:** printQRInTerminal debe ser 'false' para usar Pairing Code
     const connectionOptions = {
         logger: pino({ level: "fatal" }),
         printQRInTerminal: false, 
@@ -118,35 +117,32 @@ export async function startAssistant(options) {
         const { connection, lastDisconnect, isNewLogin, qr } = update
         if (isNewLogin) sock.isInit = false
         
-        // Si hay QR disponible, y las credenciales NO existen, se asume QR.
         if (qr && !sock.authState.creds.me) {
-            // Aquí puedes decidir si quieres enviar el QR o no.
-            // Si quieres forzar el código de emparejamiento, no hacemos nada aquí.
             console.log(chalk.yellow(`[DEBUG] QR generado, pero estamos forzando el código de emparejamiento (Pairing Code).`));
         }
 
         if (connection === 'connecting') {
-            // Solo si NO tenemos credenciales (es la primera vez que inicia)
             if (!sock.authState.creds.me) { 
                 try {
-                    // **AQUÍ ESTÁ LA LÍNEA CRÍTICA**
-                    let secret = await sock.requestPairingCode(targetJid.split`@`[0])
-                    secret = secret.match(/.{1,4}/g)?.join("-")
+                    // Obtener solo el número de teléfono sin el @s.whatsapp.net
+                    const phoneNumber = targetJid.split`@`[0];
+                    let secret = await sock.requestPairingCode(phoneNumber);
+                    secret = secret.match(/.{1,4}/g)?.join("-");
                     
-                    // Solo envías el código de texto
-                    txtCode = await conn.reply(m.chat, `Tu código para vincular es:\n→ **${secret}**\n\nCódigo expira en 30s ⏳\n\n*Recuerda vincular usando la opción 'Vincular con número de teléfono' en WhatsApp.*`, m)
+                    const codeMessage = `Tu código para vincular es:\n→ **${secret}**\n\nCódigo expira en 30s ⏳\n\n*Recuerda vincular usando la opción 'Vincular con número de teléfono' en WhatsApp.*`;
                     
-                    console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${targetJid.split('@')[0]} -> ${secret}\n`))
+                    // Usar conn.sendMessage para mayor fiabilidad, y enviarlo a m.chat
+                    txtCode = await conn.sendMessage(m.chat, { text: codeMessage }, { quoted: m });
+                    
+                    console.log(chalk.rgb(255, 165, 0)(`\nCódigo de emparejamiento generado para: +${phoneNumber} -> ${secret}\n`));
                     
                     if (txtCode && txtCode.key) {
-                        setTimeout(() => { conn.sendMessage(m.sender, { delete: txtCode.key })}, 30000)
+                        setTimeout(() => { conn.sendMessage(m.chat, { delete: txtCode.key })}, 30000);
                     }
-                    if (codeBot && codeBot.key) {
-                        setTimeout(() => { conn.sendMessage(m.sender, { delete: codeBot.key })}, 30000)
-                    }
+                    
                 } catch (error) {
                     console.error(chalk.red(`[ERROR BAILYS] Falló al solicitar el código de emparejamiento: ${error.message}`));
-                    conn.reply(m.chat, `[ERROR BAILYS] No se pudo generar el código. Causa: ${error.message}.`, m);
+                    conn.reply(m.chat, `[ERROR BAILYS] No se pudo generar el código. Causa: ${error.message}. Asegúrate de que el número esté libre de sesiones previas.`, m);
                     try { sock.ws.close() } catch (e) {}
                     sock.ev.removeAllListeners()
                 }
