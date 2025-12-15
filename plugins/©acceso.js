@@ -106,10 +106,10 @@ export async function startAssistant(options) {
         auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'silent'})) },
         msgRetry,
         msgRetryCache,
-        browser: ['Access-Assistant', 'Chrome','2.0.0'],
+        browser: ['Ubuntu', 'Chrome', '120.0.6099.199'], // Configuración del browser actualizada
         version: version,
         generateHighQualityLinkPreview: true,
-        defaultQueryTimeoutMs: 60000 // Aumentado el timeout
+        defaultQueryTimeoutMs: 60000 // Timeout aumentado a 60 segundos
     };
     
     let sock = makeWASocket(connectionOptions)
