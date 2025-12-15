@@ -1,6 +1,6 @@
 import qrcode from "qrcode"
 import NodeCache from "node-cache"
-import fs from "fs"
+import fs, { readdirSync, statSync, unlinkSync, existsSync, mkdirSync, readFileSync, rmSync, watch } from "fs"
 import path from "path"
 import pino from 'pino'
 import chalk from 'chalk'
@@ -9,8 +9,8 @@ import { makeWASocket } from '../lib/simple.js'
 import { fileURLToPath } from 'url'
 import * as baileys from "@whiskeysockets/baileys" 
 import { fork } from 'child_process' 
-import { unlinkSync, existsSync, rmdirSync } from 'fs'; 
-import { loadDatabase } from '../index.js'; // Importar loadDatabase
+import { rmdirSync } from 'fs'; 
+import { loadDatabase } from '../index.js'; 
 
 let mainHandlerModule = await import('../handler.js').catch(e => console.error('Error al cargar handler principal:', e))
 let mainHandlerFunction = mainHandlerModule?.handler || (() => {})
@@ -108,11 +108,12 @@ export async function ConnectAdditionalSession(options) {
 
     let { version } = await fetchLatestBaileysVersion()
     const msgRetry = (MessageRetryMap) => { }
-    const { state, saveState, saveCreds } = await useMultiFileAuthState(pathSubSession)
+    let { state, saveCreds } = await useMultiFileAuthState(pathSubSession) // Usamos 'let' para reasignar si es necesario
 
     const connectionOptions = {
         logger: logger,
         printQRInTerminal: false,
+        mobile: true, // Forzar uso de Pairing Code
         auth: { 
             creds: state.creds, 
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" }))
@@ -123,7 +124,6 @@ export async function ConnectAdditionalSession(options) {
         version: version,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: undefined,
-        // Usar la función getMessage de la conexión principal si es necesaria
         getMessage: conn.options.getMessage, 
     };
 
@@ -131,19 +131,13 @@ export async function ConnectAdditionalSession(options) {
     sock.isInit = false
     let isInit = true
     let codeSent = false 
-    sock.authState = { path: pathSubSession } // Añadir la ruta del estado para el findIndex
+    sock.authState = { path: pathSubSession, creds: state.creds } // Guardar creds para acceso rápido
 
-
-    async function connectionUpdate(update) {
-        const { connection, lastDisconnect, isNewLogin, qr } = update
-
-        if (isNewLogin) sock.isInit = false
-
-
-        // *** Lógica clave de emparejamiento por código de 8 dígitos ***
-        if (connection === 'open' && isInit && !sock.authState.creds.registered) {
-             console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Conexión abierta (nueva sesión) para ${folderId}. Solicitando pairing code...`));
-             try {
+    // Función para solicitar el código de emparejamiento
+    const requestCode = async () => {
+        if (!sock.authState.creds.registered && !codeSent) {
+            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Solicitando Pairing Code para +${folderId}...`));
+            try {
                 let secret = await sock.requestPairingCode(sessionId) 
                 secret = secret?.match(/.{1,4}/g)?.join("-") || secret
 
@@ -152,32 +146,50 @@ export async function ConnectAdditionalSession(options) {
                 console.log(chalk.bold.white(chalk.bgMagenta(`\n🌟 CÓDIGO FUNCIONAL (+${folderId}) 🌟`)), chalk.bold.yellowBright(secret))
                 codeSent = true 
             } catch (e) {
-                console.error(`Error al solicitar pairing code para ${folderId}:`, e);
-
-                if (e.message.includes('Connection Closed') || e.message.includes('428')) {
-                    await conn.reply(m.chat, `⚠️ Fallo en la conexión (*428*). Reintentando sesión *${folderId}*...`, m);
-                    // No cerrar aquí, dejar que el flujo 'close' lo maneje
-                } else {
-                     await conn.reply(m.chat, `⚠️ Error al obtener código. Intente *${usedPrefix}eliminar_conexion ${folderId}* y vuelva a *${usedPrefix}conectar ${folderId}*.`, m);
-                     sock.ws.close();
-                }
+                console.error(`Error al solicitar pairing code para +${folderId}:`, e);
+                // Si falla al pedir código, no es necesario reconectar, el flujo de 'close' lo manejará.
+                // Si el error es temporal (428/conexión cerrada), se reintentará en el flujo 'close'.
             }
         }
-        
-        // Si hay QR, aunque no debería usarse con pairing code
-        if (qr && !codeSent && !sock.authState.creds.registered) {
-            console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] QR recibido para ${folderId}. Ignorando, se usará Pairing Code.`));
-        }
-        // *** Fin Lógica clave de emparejamiento ***
+    }
 
+
+    async function connectionUpdate(update) {
+        const { connection, lastDisconnect, isNewLogin, qr } = update
+
+        if (isNewLogin) sock.isInit = false
+
+
+        // Pide el código inmediatamente después de la conexión inicial
+        if (connection === 'connecting' && isInit) {
+             console.log(chalk.bold.yellow(`[ASSISTANT_ACCESS] Conectando para +${folderId}. Preparando solicitud de código...`));
+        }
+        
+        if (connection === 'open') {
+            let userName = sock.authState.creds.me.name || 'Anónimo'
+            console.log(chalk.bold.cyanBright(` 🪐 ${userName} (+${folderId}) CONECTADO exitosamente.`))
+
+            // Si se registra por primera vez o si se reabre la conexión antes de registrarse
+            if (!sock.authState.creds.registered && !codeSent) {
+                 await requestCode();
+            } else if (sock.authState.creds.registered) {
+                if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
+                    global.additionalConns.push(sock)
+                }
+                if (codeSent) { 
+                    await conn.reply(m.chat, `🎉 *Sesión ID: ${folderId}* vinculada y activa.`, m);
+                    codeSent = false; // Resetear después de notificar éxito
+                }
+            }
+            sock.isInit = true
+        }
 
         if (connection === 'close') {
-            codeSent = false;
             const reason = lastDisconnect?.error?.output?.statusCode; 
 
             const shouldReconnect = [
                 DisconnectReason.timedOut,    
-                DisconnectReason.badSession,  
+                DisconnectReason.connectionClosed, 
                 DisconnectReason.connectionLost, 
                 DisconnectReason.restartRequired, 
             ].includes(reason);
@@ -188,8 +200,8 @@ export async function ConnectAdditionalSession(options) {
                 return creloadHandler(true).catch(console.error)
             } 
 
-            if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405) {
-                console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA (+${folderId}). Borrando datos.`))
+            if (reason === DisconnectReason.loggedOut || reason === 401 || reason === 405 || reason === DisconnectReason.badSession) {
+                console.log(chalk.bold.magentaBright(`\n[ASSISTANT_ACCESS] SESIÓN CERRADA/INVALIDA (+${folderId}). Borrando datos.`))
 
                 rmdirSync(pathSubSession, { recursive: true })
 
@@ -197,25 +209,14 @@ export async function ConnectAdditionalSession(options) {
                 if (activeConnIndex !== -1) {
                     global.additionalConns.splice(activeConnIndex, 1);
                 }
+                conn.reply(m.chat, `⚠️ La sesión ${folderId} ha sido cerrada permanentemente. Por favor, re-vincule si es necesario.`, m)
             }
+             codeSent = false;
         }
-
 
         if (global.db.data == null) loadDatabase()
-        if (connection == `open`) {
-            let userName = sock.authState.creds.me.name || 'Anónimo'
-
-            console.log(chalk.bold.cyanBright(` 🪐 ${userName} (+${folderId}) CONECTADO exitosamente.`))
-
-            sock.isInit = true
-            if (!global.additionalConns.some(c => c.user?.jid === sock.user?.jid)) {
-                global.additionalConns.push(sock)
-            }
-            if (sock.authState.creds.registered && codeSent) { 
-                await conn.reply(m.chat, `🎉 *Sesión ID: ${folderId}* vinculada y activa.`, m);
-            }
-        }
     }
+
 
     let creloadHandler = async function (restatConn) {
         let currentHandler = mainHandlerFunction 
@@ -226,7 +227,7 @@ export async function ConnectAdditionalSession(options) {
             sock.ev.removeAllListeners()
             
             // Re-leer el estado de autenticación al reconectar
-            const { state, saveCreds } = await useMultiFileAuthState(pathSubSession) 
+            ({ state, saveCreds } = await useMultiFileAuthState(pathSubSession)) 
             connectionOptions.auth = { 
                 creds: state.creds, 
                 keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" }))
@@ -234,10 +235,9 @@ export async function ConnectAdditionalSession(options) {
 
             sock = makeWASocket(connectionOptions, { chats: oldChats }) 
             sock.isInit = false
-            sock.authState = { path: pathSubSession } 
+            sock.authState = { path: pathSubSession, creds: state.creds } // Actualizar creds
             isInit = true
             
-            // Re-agregar 'saveCreds' después de re-crear el socket
             sock.credsUpdate = saveCreds.bind(sock, true)
             sock.ev.on("creds.update", sock.credsUpdate)
         }
@@ -251,7 +251,6 @@ export async function ConnectAdditionalSession(options) {
         sock.handler = currentHandler.bind(sock)
         sock.connectionUpdate = connectionUpdate.bind(sock)
         
-        // Si no se reinició, asignar los listeners
         if (!restatConn) {
             sock.credsUpdate = saveCreds.bind(sock, true)
         }
@@ -260,6 +259,12 @@ export async function ConnectAdditionalSession(options) {
         sock.ev.on("connection.update", sock.connectionUpdate)
         sock.ev.on("creds.update", sock.credsUpdate)
         isInit = false
+
+        // Solicitar el código al finalizar el reload si aún no está registrado
+        if (!sock.authState.creds.registered) {
+             await requestCode();
+        }
+
         return true
     }
     creloadHandler(false)
