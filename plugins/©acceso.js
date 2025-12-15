@@ -10,12 +10,15 @@ const { spawn, exec } = await import('child_process')
 const { CONNECTING } = ws
 import { makeWASocket } from '../lib/simple.js'
 import { fileURLToPath } from 'url'
+
+// --- Definiciones y constantes ---
 let crm1 = "Y2QgcGx1Z2lucy"
 let crm2 = "A7IG1kNXN1b"
 let crm3 = "SBpbmZvLWRvbmFyLmpz"
 let crm4 = "IF9hdXRvcmVzcG9uZGVyLmpzIGluZm8tYm90Lmpz"
 let drm1 = ""
 let drm2 = ""
+
 const res1 = await fetch('https://files.catbox.moe/dz34fo.jpg');
 const thumb3 = Buffer.from(await res1.arrayBuffer());
     const fkontak1 = {
@@ -31,23 +34,46 @@ const thumb3 = Buffer.from(await res1.arrayBuffer());
         }
       }
     };
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const JBOptions = {}
 if (global.conns instanceof Array) console.log()
 else global.conns = []
+
+// --- HANDLER con LOGS de diagnóstico ---
 let handler = async (m, { conn, args, usedPrefix, command, isOwner }) => {
 let who
 if (!args[0]) return m.reply(`*Ingrese el número de WhatsApp para vincular el Assistant.*\n\nEjemplo: ${usedPrefix + command} 521XXXXXXXXXX`)
 if (isNaN(args[0])) return m.reply(`El número ingresado no es válido.`)
+
+// Se recibe el número, pasamos a la limpieza
+console.log("[DEBUG 1] Número válido. Procesando...");
+
 let number = args[0].replace(/[^0-9]/g, '')
 if (number.length < 8) return m.reply(`El número es demasiado corto.`)
 who = number + '@s.whatsapp.net'
+
+console.log(`[DEBUG 2] Número limpio: ${number}. Intentando crear carpeta.`);
+
 let id = `${number}`
 let pathAssistant = path.join(`./assistant/`, id)
-if (!fs.existsSync(pathAssistant)){
-fs.mkdirSync(pathAssistant, { recursive: true })
+
+// Bloque de FS con try/catch para atrapar fallos silenciosos del sistema de archivos
+try {
+    if (!fs.existsSync(pathAssistant)){
+        fs.mkdirSync(pathAssistant, { recursive: true })
+        console.log(`[DEBUG 3] Carpeta ${id} creada exitosamente.`);
+    } else {
+        console.log(`[DEBUG 3] Carpeta ${id} ya existe.`);
+    }
+} catch (e) {
+    console.error(`[FATAL FS ERROR] No se pudo crear la carpeta para la sesión: ${e.message}`);
+    return conn.reply(m.chat, `Hubo un error interno (permisos/sistema de archivos) al intentar crear la sesión.`, m);
 }
+
+console.log("[DEBUG 4] Asignando opciones y llamando a startAssistant.");
+
 JBOptions.pathAssistant = pathAssistant
 JBOptions.m = m
 JBOptions.conn = conn
@@ -56,12 +82,18 @@ JBOptions.usedPrefix = usedPrefix
 JBOptions.command = command
 JBOptions.fromCommand = true
 JBOptions.targetJid = who 
-startAssistant(JBOptions)
+
+startAssistant(JBOptions) // Inicia la conexión
+
+console.log("[DEBUG 5] startAssistant llamado. Si esto aparece, el fallo está dentro de startAssistant.");
 } 
+
 handler.help = ['conectar']
 handler.tags = ['assistant']
 handler.command = ['conectar']
 export default handler 
+
+// --- FUNCIÓN startAssistant (sin cambios) ---
 export async function startAssistant(options) {
 let { pathAssistant, m, conn, args, usedPrefix, command, targetJid } = options
 let txtCode, codeBot
