@@ -16,51 +16,8 @@ let crm3 = "SBpbmZvLWRvbmFyLmpz"
 let crm4 = "IF9hdXRvcmVzcG9uZGVyLmpzIGluZm8tYm90Lmpz"
 let drm1 = ""
 let drm2 = ""
-let rtx2 = `
-*「 Assistant_Access 」*
 
-💻 〢 Modo Código ▣ Assistant ⌬ Temporal
-
-→ Dispositivos vinculados  
-→ Vincular con número  
-→ Ingresa el código
-
-Código expira en *5s* ⏳
-
-> 🔗 Canal Oficial ↓
-`;
-    const res = await fetch('https://i.postimg.cc/vHqc5x17/1756169140993.jpg');
-    const thumb2 = Buffer.from(await res.arrayBuffer());
-    const fkontak = {
-        key: {
-            participants: "0@s.whatsapp.net",
-            remoteJid: "status@broadcast",
-            fromMe: false,
-            id: "Halo"
-        },
-        message: {
-            locationMessage: {
-                name: `ASSISTANT MODE CODE ✦ 8\n Assistant_Access`,
-                jpegThumbnail: thumb2
-            }
-        },
-        participant: "0@s.whatsapp.net"
-    };
-const res1 = await fetch('https://files.catbox.moe/dz34fo.jpg');
-const thumb3 = Buffer.from(await res1.arrayBuffer());
-    const fkontak1 = {
-      key: { fromMe: false, participant: "0@s.whatsapp.net" },
-      message: {
-        orderMessage: {
-          itemCount: 1,
-          status: 1,
-          surface: 1,
-          message: `CONECTADO CON WHATSAPP`,
-          orderTitle: "Mejor Assistant",
-          jpegThumbnail: thumb3
-        }
-      }
-    };
+     
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const JBOptions = {}
@@ -140,12 +97,7 @@ if (connection === 'connecting') {
 if (!sock.authState.creds.me) {
 let secret = await sock.requestPairingCode(targetJid.split`@`[0])
 secret = secret.match(/.{1,4}/g)?.join("-")
-txtCode = await conn.sendMessage(m.chat, {
-    image: { url: global.img },
-    caption: rtx2,
-    ...global.fake,
-    quoted: m,
-});
+
 const msg = generateWAMessageFromContent(m.chat, proto.Message.fromObject({
   interactiveMessage: {
     body: { text: `Tu código para vincular es:\n→ ${secret}` }, 
@@ -239,7 +191,7 @@ Bienvenido @${m.sender.split('@')[0]}, a la familia de
  Assistant_Access disfruta del servicio.
  
  ${dev}
-`, mentions: [m.sender]}, { quoted: fkontak1 }) : ''
+`, mentions: [m.sender]}, { quoted: m }) : ''
 }}
 setInterval(async () => {
 if (!sock.user) {
