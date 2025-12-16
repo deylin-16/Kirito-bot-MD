@@ -160,18 +160,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
     const res3 = await fetch("https://files.catbox.moe/wfd0ze.jpg");
     const thumb3 = Buffer.from(await res3.arrayBuffer());
 
-    const fkontak2 = {
-      key: { fromMe: false, participant: "0@s.whatsapp.net" },
-      message: {
-        documentMessage: {
-          title: "𝗗𝗘𝗦𝗖𝗔𝗥𝗚𝗔𝗡𝗗𝗢",
-          fileName: global.botname || "Bot",
-          jpegThumbnail: thumb3
-        }
-      }
-    };
-
-    let jid = m.sender
+    
 
         let assistantName;
     if (m.isGroup && typeof global.getGroupAssistantConfig === 'function') {
@@ -181,16 +170,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
         assistantName = global.bot;
     }
 
-    const fkontak = {
-        key: { fromMe: false, participant: jid },
-        message: {
-            documentMessage: {
-                title: `「 ${title} 」`,
-                fileName: assistantName || "Bot",
-                jpegThumbnail: thumb3
-            }
-        }
-    }
+    
 
 
     
@@ -218,10 +198,9 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
              }
           }
         },
-        { quoted: fkontak }
+        { quoted: m }
       );
     }
-
     
     
   } catch (error) {
