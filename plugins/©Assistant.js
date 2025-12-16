@@ -47,7 +47,7 @@ handler.all = async function (m, { conn }) {
     let query = m.text || ''
     let username = m.pushName || 'Usuario'
 
-    let isOrBot = /(jiji|gato|asistente)/i.test(query)
+    let isOrBot = /(jiji.|gato|asistente)/i.test(query)
     let isReply = m.quoted && m.quoted.sender === this.user.jid
     let isMention = m.mentionedJid && m.mentionedJid.includes(this.user.jid) 
 
