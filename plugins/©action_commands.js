@@ -22,7 +22,8 @@ global.getGroupAssistantConfig = (chatId) => {
 
     return {
         assistantName: groupConfig?.assistantName || global.bot,
-        assistantImage: groupConfig?.assistantImage || "https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg"
+        assistantImage: groupConfig?.assistantImage || null,
+        assistantCommand: groupConfig?.assistantCommand || 'jiji' 
     }
 }
 
@@ -53,39 +54,39 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 *— Creador:* ${ownerBot[0].name}
 *— Runtime:* ${msToDate(process.uptime() * 1000)}
 
-*— ACTION COMMANDS  —*
-
-
-- *descargar/descarga*
-> Enlace de tiktok/Facebook/instagram 
-
-- *play/MP3/🎧/🎵*
-> Nombre del vídeo de YouTube para descargar MP3 
-
-`
+*— COMANDOS —*
+${customCommands}`
     
     let pp
+    const defaultImg = 'https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg'
 
     if (assistantImage) {
         pp = Buffer.from(assistantImage, 'base64')
-    } else if (conn.user.imgUrl) {
-        pp = await conn.profilePictureUrl(conn.user.jid, 'image').catch(_ => fs.readFileSync(path.join(__dirname, '../src/avatar_contact.png')))
     } else {
-         pp = fs.readFileSync(path.join(__dirname, '../src/avatar_contact.png'))
+        pp = defaultImg
     }
 
     try {
-        await conn.sendMessage(m.chat, { 
-            image: pp, 
-            caption: caption.trim()
-        }, { quoted: m })
+        if (typeof pp === 'string') {
+            await conn.sendMessage(m.chat, { 
+                image: { url: pp }, 
+                caption: caption.trim()
+            }, { quoted: m })
+        } else {
+            await conn.sendMessage(m.chat, { 
+                image: pp, 
+                caption: caption.trim()
+            }, { quoted: m })
+        }
     } catch (e) {
-        console.error("Error al enviar el menú con imagen:", e)
+        console.error("Error al enviar el menú:", e)
         await conn.reply(m.chat, caption.trim(), m)
     }
 }
 
-handler.command = ['menu', 'comandos', 'funciones']
+handler.help = ['menu']
+handler.tags = ['main']
+handler.command = ['menu']
 
 export default handler
 
