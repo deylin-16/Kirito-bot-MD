@@ -3,26 +3,6 @@ import path from 'path'
 import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = path.join(__dirname, 'db/group_configs.json')
-
-global.getGroupAssistantConfig = (chatId) => {
-    let configs = {}
-    try {
-        if (fs.existsSync(DB_PATH)) {
-            configs = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'))
-        }
-    } catch (e) {
-        console.error("Error al leer group_configs.json:", e)
-    }
-
-    const groupConfig = configs[chatId]
-
-    return {
-        assistantName: groupConfig?.assistantName || global.bot,
-        assistantImage: groupConfig?.assistantImage || null,
-        assistantCommand: groupConfig?.assistantCommand || 'jiji' 
-    }
-}
 
 let handler = async (m, { conn, usedPrefix, command }) => {
     let { assistantName, assistantImage, assistantCommand } = global.getGroupAssistantConfig(m.chat)
@@ -53,24 +33,18 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 *— COMANDOS —*
 ${customCommands}`
     
-    let pp
-    const defaultImg = 'https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg'
-
-    if (assistantImage) {
-        pp = Buffer.from(assistantImage, 'base64')
-    } else {
-        pp = defaultImg
-    }
+    let pp = assistantImage
 
     try {
-        if (typeof pp === 'string') {
+        if (assistantImage.startsWith('http')) {
             await conn.sendMessage(m.chat, { 
-                image: { url: pp }, 
+                image: { url: assistantImage }, 
                 caption: caption.trim()
             }, { quoted: m })
         } else {
+            let imgBuffer = Buffer.from(assistantImage, 'base64')
             await conn.sendMessage(m.chat, { 
-                image: pp, 
+                image: imgBuffer, 
                 caption: caption.trim()
             }, { quoted: m })
         }
