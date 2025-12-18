@@ -1,15 +1,25 @@
 let handler = async (m, { conn, text }) => {
-    let input = text ? text.replace(/@\d+/g, '').trim().toLowerCase() : ''
-    let validPhrases = /^(foto de perfil|perfil|foto)$/i
+    if (!text) return
+    
+    
+    let args = text.trim().split(/ +/)
+    let extension = args[0].toLowerCase() 
+    let validPhrases = /^(foto|perfil)$/i
+    
+    
+    if (text.toLowerCase().startsWith('foto de perfil')) {
+        extension = 'foto de perfil'
+    }
 
-    if (!validPhrases.test(input)) return
+    if (!/^(foto de perfil|perfil|foto)$/i.test(extension)) return
 
     let who
     if (m.quoted?.sender) {
         who = m.quoted.sender
     } else if (m.mentionedJid?.[0]) {
         who = m.mentionedJid[0]
-    } else if (text) {
+    } else {
+        
         let number = text.replace(/[^0-9]/g, '')
         if (number.length > 8) {
             who = number + '@s.whatsapp.net'
@@ -18,7 +28,7 @@ let handler = async (m, { conn, text }) => {
 
     if (!who) {
         return conn.sendMessage(m.chat, {
-            text: 'Menciona a alguien o responde a un mensaje para obtener la foto.'
+            text: 'Menciona a alguien, responde a un mensaje o escribe un número tras la frase.'
         }, {
             quoted: m
         })
@@ -44,14 +54,14 @@ let handler = async (m, { conn, text }) => {
         try {
             pp = await conn.profilePictureUrl(m.chat, 'image')
             await conn.sendMessage(m.chat, {
-                text: `*Foto privada, se muestra la del grupo.*`
+                text: `*La foto de ${name} es privada, te envío la del grupo.*`
             }, {
                 quoted: m
             })
         } catch {
             pp = 'https://raw.githubusercontent.com/The-King-Destroy/Adiciones/main/Contenido/1745522645448.jpeg'
             await conn.sendMessage(m.chat, {
-                text: `*No se encontró foto.*`
+                text: `*No encontré nada para ${name}.*`
             }, {
                 quoted: m
             })
