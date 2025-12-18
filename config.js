@@ -59,6 +59,32 @@ global.getGroupAssistantConfig = (chatId) => {
     }
 }
 
+
+
+global.m_code = (chatId) => {
+    const groupConfig = global.getGroupAssistantConfig(chatId);
+    return {
+        contextInfo: {
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterJid: channelRD.id,
+                newsletterName: channelRD.name,
+                serverMessageId: -1
+            },
+            externalAdReply: {
+                title: `Código de emparejamiento de ${groupConfig.assistantCommand} - asistente`,
+                body: `Asistente: ${groupConfig.assistantName}`,
+                mediaType: 1,
+                previewType: 'PHOTO',
+                renderLargerThumbnail: true, 
+                thumbnailUrl: groupConfig.assistantImage,
+                sourceUrl: 'https://www.deylin.xyz' 
+            }
+        }
+    };
+};
+
+
 let file = fileURLToPath(import.meta.url)
 watchFile(file, () => {
   unwatchFile(file)
