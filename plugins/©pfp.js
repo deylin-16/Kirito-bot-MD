@@ -1,17 +1,8 @@
 let handler = async (m, { conn, text }) => {
     if (!text) return
-    
-    
-    let args = text.trim().split(/ +/)
-    let extension = args[0].toLowerCase() 
-    let validPhrases = /^(foto|perfil)$/i
-    
-    
-    if (text.toLowerCase().startsWith('foto de perfil')) {
-        extension = 'foto de perfil'
-    }
 
-    if (!/^(foto de perfil|perfil|foto)$/i.test(extension)) return
+    let extensiones = /^(foto de perfil|perfil|foto)/i
+    if (!extensiones.test(text.trim())) return
 
     let who
     if (m.quoted?.sender) {
@@ -19,7 +10,6 @@ let handler = async (m, { conn, text }) => {
     } else if (m.mentionedJid?.[0]) {
         who = m.mentionedJid[0]
     } else {
-        
         let number = text.replace(/[^0-9]/g, '')
         if (number.length > 8) {
             who = number + '@s.whatsapp.net'
@@ -28,7 +18,7 @@ let handler = async (m, { conn, text }) => {
 
     if (!who) {
         return conn.sendMessage(m.chat, {
-            text: 'Menciona a alguien, responde a un mensaje o escribe un número tras la frase.'
+            text: 'Menciona a alguien, responde a un mensaje o escribe un número después de la frase.'
         }, {
             quoted: m
         })
@@ -61,7 +51,7 @@ let handler = async (m, { conn, text }) => {
         } catch {
             pp = 'https://raw.githubusercontent.com/The-King-Destroy/Adiciones/main/Contenido/1745522645448.jpeg'
             await conn.sendMessage(m.chat, {
-                text: `*No encontré nada para ${name}.*`
+                text: `*No encontré foto para ${name}.*`
             }, {
                 quoted: m
             })
