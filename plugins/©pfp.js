@@ -62,6 +62,6 @@ let handler = async (m, { conn, text }) => {
     await m.react('✔️');
 };
 
- handler.command = /^(robar|tomar|obtener)/i;
+ handler.command = ['robar', 'tomar', 'obtener'];
 
 export default handler;
