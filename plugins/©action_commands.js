@@ -30,7 +30,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 ◦ \`robar perfil/tomar perfil\` (@user/number)
 
 *• SPY FUNCTION*
-◦ \`👁️‍🗨️|👁️\` (steal photos/videos/audios from a single view)
+◦ \`👁️‍🗨️/👁️/:)\` (steal photos/videos/audios from a single view)
 `;
 
     let caption = `*HELLO I AM ${assistantName.toUpperCase()}* 
