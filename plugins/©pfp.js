@@ -1,16 +1,12 @@
-let handler = async (m, { conn, args, text }) => {
-    let mentionedJid = m.mentionedJid;
+let handler = async (m, { conn, text }) => {
     let who;
-
     if (m.quoted?.sender) {
         who = m.quoted.sender;
-    } else if (mentionedJid?.[0]) {
-        who = mentionedJid[0];
-    } else if (args[0]) {
-        let number = args[0].replace(/[^0-9]/g, '');
-        if (number) {
-            who = number + '@s.whatsapp.net';
-        }
+    } else if (m.mentionedJid?.[0]) {
+        who = m.mentionedJid[0];
+    } else if (text) {
+        let number = text.replace(/[^0-9]/g, '');
+        if (number.length > 8) who = number + '@s.whatsapp.net';
     }
 
     if (!who) {
@@ -54,11 +50,15 @@ let handler = async (m, { conn, args, text }) => {
 handler.customPrefix = /^(robar fotos de perfil|tomar perfil|obtener foto)/i;
 handler.command = new RegExp;
 
-handler.all = async function (m) {
-    if (!m.text) return;
-    const triggers = ['robar fotos de perfil', 'tomar perfil', 'obtener foto'];
-    if (triggers.some(phrase => m.text.toLowerCase() === phrase.toLowerCase())) {
-       // this.sendMessage(m.chat, { text: 'Dime a quien quieras robar su foto de perfil  w.' }, { quoted: m });
+handler.before = async function (m) {
+    if (!m.text || m.isBaileys || m.fromMe) return;
+    
+    const isCommand = /^(robar fotos de perfil|tomar perfil|obtener foto)/i.test(m.text);
+    const hasTarget = m.quoted || m.mentionedJid?.[0];
+
+    if (!isCommand && !hasTarget) {
+        await this.sendMessage(m.chat, { text: 'Dime a quien quieras robar su foto de perfil  w.' }, { quoted: m });
+        return true;
     }
 };
 
