@@ -105,10 +105,11 @@ const handler = async (m, { conn, text, isROwner, isOwner, isRAdmin, isAdmin, is
             m.reply(randomResponse('REMOVE_SUCCESS', user))
         }
     } else if (actionKey === 'TAGALL') {
-        let members = participants.map(p => p.id)
-        let msg = randomResponse('TAGALL_DEFAULT') + '\n' + members.map(v => '@' + v.replace(/@s\.whatsapp\.net/g, '')).join('\n')
-        conn.sendMessage(m.chat, { text: msg, mentions: members })
-    }
+    let members = participants.map(p => p.id)
+    let msg = randomResponse('TAGALL_DEFAULT') + '\n' + members.map(v => '@' + v.replace(/@(s\.whatsapp\.net|lid)/g, '')).join('\n')
+    conn.sendMessage(m.chat, { text: msg, mentions: members })
+}
+
 }
 
 handler.command = ['jiji']
