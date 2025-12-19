@@ -26,28 +26,30 @@ handler.all = async function (m, chatUpdate) {
     let queryLower = rawText.toLowerCase().trim()
     let cleanQuery = queryLower.replace(/^(jiji|gato|asistente)\s+/, '').trim()
 
-    if (respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]) {
-        let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
-        await conn.sendPresenceUpdate('composing', m.chat)
-        await new Promise(resolve => setTimeout(resolve, 800))
-        await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
-        return true 
-    }
-
-    let prefixRegex = new RegExp('^[' + (opts?.prefix || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']')
-    if (prefixRegex.test(rawText)) return true
-
     let isOrBot = /(jiji|gato|asistente)/i.test(rawText)
     let isReply = m.quoted && m.quoted.sender === conn.user.jid
     let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
 
     if (!(isOrBot || isReply || isMention)) return
 
-    if (DIRECT_COMMAND_REGEX.test(queryLower)) {
-        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) return true
+    let { key } = await conn.sendMessage(m.chat, { text: '✍️...' }, { quoted: m })
+    await conn.sendPresenceUpdate('composing', m.chat)
+
+    if (respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]) {
+        let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await conn.sendMessage(m.chat, { text: txt, edit: key })
+        return true 
     }
 
-    await conn.sendPresenceUpdate('composing', m.chat)
+    if (prefixRegex.test(rawText)) return true
+
+    if (DIRECT_COMMAND_REGEX.test(queryLower)) {
+        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) {
+             //await conn.sendMessage(m.chat, { text: '⚙️ Comando de admin detectado.', edit: key })
+             return true
+        }
+    }
 
     let assistantName = m.isGroup && typeof global.getGroupAssistantConfig === 'function' 
         ? global.getGroupAssistantConfig(m.chat).assistantName 
@@ -59,30 +61,38 @@ handler.all = async function (m, chatUpdate) {
     try {
         const url = `${POLLINATIONS_BASE_URL}/${encodeURIComponent(jijiPrompt)}?model=openai&cache=true`;
         const res = await fetch(url)
-        
-        if (!res.ok) {
-            console.error(`Error en API: ${res.status} ${res.statusText}`);
-            return; 
-        }
+        if (!res.ok) throw new Error('API Error');
 
         let result = await res.text()
-        
         if (result && result.trim().length > 0) {
             let fullText = result.trim()
             let words = fullText.split(' ')
-            let { key } = await conn.sendMessage(m.chat, { text: '✍️...' }, { quoted: m })
             
+            let step = 4; 
+            let speed = 300; 
+
+            if (fullText.length > 500) {
+                step = 12; 
+                speed = 400;
+            } else if (fullText.length > 200) {
+                step = 8;
+                speed = 350;
+            }
+
             let currentText = ''
-            for (let i = 0; i < words.length; i++) {
-                currentText += words[i] + ' '
-                if (i % 4 === 0 || i === words.length - 1) {
-                    await conn.sendMessage(m.chat, { text: currentText.trim(), edit: key })
-                    await new Promise(resolve => setTimeout(resolve, 250))
-                }
+            for (let i = 0; i < words.length; i += step) {
+                currentText = words.slice(0, i + step).join(' ')
+                await conn.sendMessage(m.chat, { text: currentText.trim(), edit: key })
+                await new Promise(resolve => setTimeout(resolve, speed))
+            }
+            
+            if (currentText.trim() !== fullText) {
+                await conn.sendMessage(m.chat, { text: fullText, edit: key })
             }
         }
     } catch (e) {
-        console.error('Error en handler.all:', e)
+        console.error(e)
+        await conn.sendMessage(m.chat, { text: '💢 Algo salió mal en mi cabeza.', edit: key })
     }
     return true
 }
