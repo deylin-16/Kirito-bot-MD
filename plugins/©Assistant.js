@@ -17,40 +17,40 @@ let handler = m => m
 
 handler.all = async function (m, chatUpdate) {
     const conn = this;
-    let chat = global.db.data?.chats?.[m.chat]
-    if (!chat || chat.isBanned || !chat.autoresponder) return
-
-    if (m.isBot || m.fromMe || !m.text) return 
-
-    let rawText = m.text
-    let queryLower = rawText.toLowerCase().trim()
     
-    let isOrBot = /(jiji|gato|asistente)/i.test(rawText)
+    if (m.isBot || m.fromMe || !m.text) return 
+    
+    let isOrBot = /(jiji|gato|asistente)/i.test(m.text)
     let isReply = m.quoted && m.quoted.sender === conn.user.jid
     let isMention = m.mentionedJid && m.mentionedJid.includes(conn.user.jid) 
 
     if (!(isOrBot || isReply || isMention)) return
 
-    let { key } = await conn.sendMessage(m.chat, { text: '✍️...' }, { quoted: m })
+    let { key } = await conn.sendMessage(m.chat, { text: ' Pensando...' }, { quoted: m })
+    
+    let chat = global.db.data?.chats?.[m.chat]
+    if (!chat || chat.isBanned || !chat.autoresponder) {
+        await conn.sendMessage(m.chat, { text: '📴', edit: key })
+        return
+    }
+
     await conn.sendPresenceUpdate('composing', m.chat)
 
+    let queryLower = m.text.toLowerCase().trim()
     let cleanQuery = queryLower.replace(/^(jiji|gato|asistente)\s+/, '').trim()
 
     if (respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]) {
         let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 600))
         await conn.sendMessage(m.chat, { text: txt, edit: key })
         return true 
     }
 
-    let prefixRegex = new RegExp('^[' + (opts?.prefix || '‎z/i!#$%+£¢€¥^°=¶∆×÷π√✓©®:;?&.,\\-').replace(/[|\\{}()[\]^$+*?.\-\^]/g, '\\$&') + ']')
-    if (prefixRegex.test(rawText)) {
-        await conn.sendMessage(m.chat, { text: '⚙️', edit: key }) 
-        return true
-    }
-
     if (DIRECT_COMMAND_REGEX.test(queryLower)) {
-        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) return true
+        if (!/(como|cómo|que|qué|donde|dónde|porque|por qué|porqué|quisiera)/i.test(queryLower)) {
+            await conn.sendMessage(m.chat, { text: '✅', edit: key })
+            return true
+        }
     }
 
     let assistantName = m.isGroup && typeof global.getGroupAssistantConfig === 'function' 
@@ -58,7 +58,7 @@ handler.all = async function (m, chatUpdate) {
         : (global.bot || 'Asistente');
 
     let username = m.pushName || 'Usuario'
-    let jijiPrompt = `Eres ${assistantName}. Tu personalidad: Sarcástico, enojón, directo, divertido pero furioso, demuestras poder y adorable. Responde a ${username}: ${rawText}. Usa * para resaltar.`;
+    let jijiPrompt = `Eres ${assistantName}. Tu personalidad: Sarcástico, enojón, directo, divertido pero furioso, demuestras poder y adorable. Responde a ${username}: ${m.text}. Usa * para resaltar.`;
 
     try {
         const url = `${POLLINATIONS_BASE_URL}/${encodeURIComponent(jijiPrompt)}?model=openai&cache=true`;
@@ -70,16 +70,8 @@ handler.all = async function (m, chatUpdate) {
             let fullText = result.trim()
             let words = fullText.split(' ')
             
-            let step = 5; 
-            let speed = 300; 
-
-            if (fullText.length > 500) {
-                step = 15; 
-                speed = 450;
-            } else if (fullText.length > 200) {
-                step = 10;
-                speed = 350;
-            }
+            let step = fullText.length > 500 ? 15 : (fullText.length > 200 ? 10 : 5);
+            let speed = fullText.length > 500 ? 450 : 300;
 
             let currentText = ''
             for (let i = 0; i < words.length; i += step) {
@@ -94,7 +86,7 @@ handler.all = async function (m, chatUpdate) {
         }
     } catch (e) {
         console.error(e)
-        await conn.sendMessage(m.chat, { text: '💢 Error de conexión.', edit: key })
+        await conn.sendMessage(m.chat, { text: '❌ No puedo responder ahora.', edit: key })
     }
     return true
 }
