@@ -32,7 +32,7 @@ handler.all = async function (m, { conn }) {
         let txt = respuestasPredefinidas[cleanQuery] || respuestasPredefinidas[queryLower]
         await conn.sendPresenceUpdate('composing', m.chat)
         await new Promise(resolve => setTimeout(resolve, 800))
-        await conn.reply(m.chat, txt, m)
+        await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         return true 
     }
 
@@ -82,7 +82,7 @@ handler.all = async function (m, { conn }) {
         }
     } catch (e) {
         console.error(e)
-        await conn.reply(m.chat, '⚠️ Fallo en la conexión cerebral.', m)
+        await conn.sendMessage(m.chat, { text: '⚠️ Fallo en la conexión cerebral.' }, { quoted: m })
     }
     return true
 }
