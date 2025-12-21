@@ -1,53 +1,25 @@
-import fetch from 'node-fetch'
-import { format } from 'util'
-
-let handler = async (m, { conn, text }) => {
-  try {
-    if (m.fromMe) return
-    await m.react(`⏳`)
-
-    if (m.quoted && m.quoted.mimetype) {
-      const mime = m.quoted.mimetype
-
-      if (/text|json|javascript|html|css|xml/.test(mime)) {
-        let buffer = await m.quoted.download()
-        let txt = buffer.toString('utf-8')
-        try { txt = format(JSON.parse(txt)) } catch {}
-        await m.reply(txt)
-        
-      }
-
-      let buffer = await m.quoted.download()
-      await conn.sendMessage(m.chat, { document: buffer, mimetype: mime, fileName: m.quoted.fileName || 'archivo' }, { quoted: m })
-      
-    }
-
-    if (!text || !/^https?:\/\//.test(text)) {
-      return m.reply(`${emoji} Envía una URL válida o cita un archivo y usa get`)
-    }
-
-    const res = await fetch(text)
-    const type = res.headers.get('content-type') || ''
-
-    if (!/text|json/.test(type)) {
-      await conn.sendFile(m.chat, text, 'archivo', text, m)
-      
-    }
-
-    let txt = (await res.buffer()).toString('utf-8')
-    try { txt = format(JSON.parse(txt)) } catch {}
-    await m.reply(txt)
+import fetch from 'node-fetch';
+import {format} from 'util';
+const handler = async (m, {text}) => {
+    if (!/^https?:\/\//.test(text)) return m.reply(' Te faltó el *url* de la pagina.');
+  const _url = new URL(text);
+  const url = global.API(_url.origin, _url.pathname, Object.fromEntries(_url.searchParams.entries()), 'APIKEY');
+  const res = await fetch(url);
+  if (res.headers.get('content-length') > 100 * 1024 * 1024 * 1024) {
     
-
-  } catch (err) {
-    await m.react(`❌`)
-    await m.reply(`${emoji} ${err.message || err}`)
+    throw `Content-Length: ${res.headers.get('content-length')}`;
   }
-}
+  if (!/text|json/.test(res.headers.get('content-type'))) return conn.sendFile(m.chat, url, 'file', text, m);
+  let txt = await res.buffer();
+  try {
+    txt = format(JSON.parse(txt + ''));
+  } catch (e) {
+    txt = txt + '';
+  } finally {
+    m.reply(txt.slice(0, 655366666) + '');
+  }
+};
 
-handler.help = ['get']
-handler.tags = ['tools']
-handler.command = ['fetch', 'get']
-handler.rowner = true
+handler.command = ['get'];
 
-export default handler
+export default handler;
