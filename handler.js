@@ -21,9 +21,7 @@ export async function handler(chatUpdate) {
     this.uptime = this.uptime || Date.now();
     const conn = this;
 
-    if (!chatUpdate || !chatUpdate.messages || chatUpdate.messages.length === 0) {
-        return;
-    }
+    if (!chatUpdate || !chatUpdate.messages || chatUpdate.messages.length === 0) return;
 
     let m = chatUpdate.messages[chatUpdate.messages.length - 1];
     if (!m) return;
@@ -31,9 +29,7 @@ export async function handler(chatUpdate) {
     m = smsg(conn, m) || m;
     if (!m) return;
 
-    if (global.db.data == null) {
-        await global.loadDatabase();
-    }
+    if (global.db.data == null) await global.loadDatabase();
 
     conn.processedMessages = conn.processedMessages || new Map();
     const now = Date.now();
@@ -47,6 +43,7 @@ export async function handler(chatUpdate) {
         if (now - time > lifeTime) conn.processedMessages.delete(msgId);
     }
 
+    let user; 
     try {
         m.exp = 0;
         m.coin = false;
@@ -86,7 +83,7 @@ export async function handler(chatUpdate) {
         };
 
         if (typeof global.db.data.users[senderJid] !== 'object') global.db.data.users[senderJid] = {};
-        const user = global.db.data.users[senderJid];
+        user = global.db.data.users[senderJid];
         const chat = global.db.data.chats[chatJid];
         const settings = global.db.data.settings[settingsJid];
 
@@ -131,13 +128,7 @@ export async function handler(chatUpdate) {
             senderLid = m.sender;
             botLid = conn.user.jid;
             botJid = conn.user.jid;
-            groupMetadata = {};
-            participants = [];
-            user2 = {};
-            bot = {};
-            isRAdmin = false;
-            isAdmin = false;
-            isBotAdmin = false;
+            isRAdmin = isAdmin = isBotAdmin = false;
         }
 
         const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins');
@@ -250,8 +241,8 @@ let file = global.__filename(import.meta.url, true);
 watchFile(file, async () => {
     unwatchFile(file);
     if (global.conns && global.conns.length > 0) {
-        for (const user of global.conns.filter(c => c.user && c.ws.socket?.readyState !== ws.CLOSED)) {
-            user.subreloadHandler(false);
+        for (const u of global.conns.filter(c => c.user && c.ws.socket?.readyState !== ws.CLOSED)) {
+            u.subreloadHandler(false);
         }
     }
 });
