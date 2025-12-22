@@ -33,7 +33,8 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 ◦ \`👁️‍🗨️/👁️/:)\` (Robar fotos/videos/audios de una sola vista)
 `;
 
-    let caption = `*HOLA, SOY ${assistantName.toUpperCase()}* *— Versión:* ${_package.version}
+    let caption = `*HOLA, SOY ${assistantName.toUpperCase()}* 
+*— Versión:* ${_package.version} 
 *— Creador:* ${ownerBot[0].name}
 *— Tiempo activo:* ${msToDate(process.uptime() * 1000)}
 
