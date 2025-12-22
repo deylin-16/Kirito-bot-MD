@@ -96,6 +96,7 @@ export async function handler(chatUpdate) {
         const detectwhat = m.sender.includes('@lid') ? '@lid' : '@s.whatsapp.net';
         const isROwner = global.owner.map(([number]) => number.replace(/[^0-9]/g, '') + detectwhat).includes(senderJid);
         const isOwner = isROwner || m.fromMe;
+        const isSubAssistant = conn.user.jid !== mainBotJid;
 
         if (m.isBaileys || opts['nyimak']) return;
         if (!isROwner && opts['self']) return;
@@ -121,7 +122,6 @@ export async function handler(chatUpdate) {
             isAdmin = isRAdmin || user2?.admin === "admin";
             isBotAdmin = !!bot?.admin;
 
-            const isSubAssistant = conn.user.jid !== mainBotJid;
             if (isSubAssistant && !isBotAdmin) return;
 
         } else {
@@ -151,7 +151,7 @@ export async function handler(chatUpdate) {
             if (!opts['restrict'] && plugin.tags && plugin.tags.includes('admin')) continue;
 
             if (typeof plugin.before === 'function') {
-                if (await plugin.before.call(conn, m, { conn, participants, groupMetadata, user, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename })) continue;
+                if (await plugin.before.call(conn, m, { conn, participants, groupMetadata, user, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, isSubAssistant, chatUpdate, __dirname: ___dirname, __filename })) continue;
             }
 
             if (typeof plugin !== 'function') continue;
@@ -182,10 +182,17 @@ export async function handler(chatUpdate) {
             if (chat?.modoadmin && !isOwner && !isROwner && m.isGroup && !isAdmin) return;
 
             const checkPermissions = (perm) => ({
-                rowner: isROwner, owner: isOwner, group: m.isGroup, botAdmin: isBotAdmin, admin: isAdmin, private: !m.isGroup, restrict: !opts['restrict']
+                rowner: isROwner, 
+                owner: isOwner, 
+                group: m.isGroup, 
+                botAdmin: isBotAdmin, 
+                admin: isAdmin, 
+                private: !m.isGroup, 
+                restrict: !opts['restrict'],
+                subBot: isSubAssistant || isROwner
             }[perm]);
 
-            const requiredPerms = ['rowner', 'owner', 'group', 'botAdmin', 'admin', 'private', 'restrict'];
+            const requiredPerms = ['rowner', 'owner', 'group', 'botAdmin', 'admin', 'private', 'restrict', 'subBot'];
             for (const perm of requiredPerms) {
                 if (plugin[perm] && !checkPermissions(perm)) {
                     global.dfail(perm, m, conn);
@@ -197,14 +204,14 @@ export async function handler(chatUpdate) {
             m.exp += 'exp' in plugin ? parseInt(plugin.exp) : 10;
 
             try {
-                await plugin.call(conn, m, { usedPrefix, noPrefix, args, command, text, conn, participants, groupMetadata, user, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename });
+                await plugin.call(conn, m, { usedPrefix, noPrefix, args, command, text, conn, participants, groupMetadata, user, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, isSubAssistant, chatUpdate, __dirname: ___dirname, __filename });
             } catch (e) {
                 m.error = e;
                 m.reply(format(e));
             } finally {
                 if (typeof plugin.after === 'function') {
                     try {
-                        await plugin.after.call(conn, m, { usedPrefix, noPrefix, args, command, text, conn, participants, groupMetadata, user, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, chatUpdate, __dirname: ___dirname, __filename });
+                        await plugin.after.call(conn, m, { usedPrefix, noPrefix, args, command, text, conn, participants, groupMetadata, user, isROwner, isOwner, isRAdmin, isAdmin, isBotAdmin, isSubAssistant, chatUpdate, __dirname: ___dirname, __filename });
                     } catch (e) { console.error(e) }
                 }
             }
@@ -233,6 +240,7 @@ global.dfail = (type, m, conn) => {
         private: `De ésto solo habló en privado güey.`,
         admin: `Solo los administradores me pueden decir que hacer.`,
         botAdmin: `Dame admin bro para seguir.`,
+        subBot: `Esta función solo la puede usar un sub-asistente o mi creador.`
     };
     if (messages[type]) conn.reply(m.chat, messages[type], m);
 };
