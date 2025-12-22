@@ -5,8 +5,8 @@ import fs from 'fs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 let handler = async (m, { conn, usedPrefix, command }) => {
-    let { assistantName, assistantImage, assistantCommand } = global.getGroupAssistantConfig(m.chat)
-    
+    let { assistantName, assistantImage } = global.getAssistantConfig(conn.user.jid)
+
     let isSub = conn.user.jid !== global.conn?.user?.jid
     let ownerBot = global.owner.map(([jid, name]) => ({ jid, name }))
 
@@ -33,9 +33,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 ◦ \`👁️‍🗨️/👁️/:)\` (steal photos/videos/audios from a single view)
 `;
 
-    let caption = `*HELLO I AM ${assistantName.toUpperCase()}* 
-
-*— Version:* ${_package.version}
+    let caption = `*HELLO I AM ${assistantName.toUpperCase()}* *— Version:* ${_package.version}
 *— Creator:* ${ownerBot[0].name}
 *— Runtime:* ${msToDate(process.uptime() * 1000)}
 
@@ -43,27 +41,19 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
 *— COMMANDS —*
 ${customCommands}`
-    
-    let pp = assistantImage
 
     try {
-        if (assistantImage.startsWith('http')) {
-            await conn.sendMessage(m.chat, { 
-                image: { url: assistantImage }, 
-                caption: caption.trim()
-            }, { quoted: m })
-        } else {
-            let imgBuffer = Buffer.from(assistantImage, 'base64')
-            await conn.sendMessage(m.chat, { 
-                image: imgBuffer, 
-                caption: caption.trim()
-            }, { quoted: m })
-        }
+        let sendImage = typeof assistantImage === 'string' ? { url: assistantImage } : assistantImage
+        
+        await conn.sendMessage(m.chat, { 
+            image: sendImage, 
+            caption: caption.trim()
+        }, { quoted: m })
+        
     } catch (e) {
         await conn.reply(m.chat, caption.trim(), m)
     }
 }
-
 
 handler.command = ['menu', 'comandos', 'funcioned', 'ayuda']
 
