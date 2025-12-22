@@ -42,7 +42,6 @@ const makeImageWithText = async (buffer, text, color) => {
   }
   if (line) lines.push(line)
 
-  const user = m.pushName || 'Anónimo'
   const padding = 20
   const textHeight = lines.length * (Jimp.measureTextHeight(font, 'M', maxWidth) + 20)
   const boxHeight = textHeight + padding * 2
@@ -66,6 +65,7 @@ let handler = async (m, { conn, args }) => {
     let q = m.quoted ? m.quoted : m
     let mime = (q.msg || q).mimetype || q.mediaType || ''
     let buffer
+    let user = m.pushName || 'Anónimo'
 
     if (m.quoted && /sticker/.test(q.mtype)) {
       const webpBuffer = await q.download()
