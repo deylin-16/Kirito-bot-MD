@@ -27,6 +27,8 @@ if (!globalThis.db.data.settings[conn.user.jid].jadibotmd) return m.reply(`El co
 let socklimit = global.conns.filter(sock => sock?.user).length
 if (socklimit >= 50) return m.reply(`No se han encontrado espacios para Sub-Bots disponibles.`)
 
+    global.getAssistantConfig(conn.user.jid)
+
 let phoneNumber = m.sender.split('@')[0]
 let id = phoneNumber
 let pathAssistantAccess = path.join(`./${jadi}/`, id)
