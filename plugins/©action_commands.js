@@ -12,35 +12,38 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     let _package = JSON.parse(await fs.promises.readFile(path.join(__dirname, '../package.json')).catch(_ => '{}')) || {}
 
-        let customCommands = `
+            let customCommands = `
 *• GRUPOS*
-◦ \`jiji cierra\` (Cerrar el grupo)
-◦ \`jiji abre\` (Abrir el grupo)
-◦ \`jiji renombrar a\` (Cambiar nombre)
+◦ \`cierra\` / \`abre\` (Controlar el grupo)
+◦ \`renombrar\` (Cambiar nombre del grupo)
+◦ \`setdesc\` (Cambiar descripción)
+◦ \`setpp\` (Cambiar foto del grupo)
 
 *• UTILIDADES*
-◦ \`jiji elimina\` (@tag)
-◦ \`jiji menciona a todos\`
+◦ \`kick\` / \`elimina\` (@tag o responder)
+◦ \`todos\` / \`tagall\` (Mencionar a todos)
 
 *• EXTRACCIÓN DE CONTENIDO*
-◦ \`play/🎧\` (Título de video de YouTube)
-◦ \`Descarga\` (Enlace de Facebook/Tiktok/Instagram)
+◦ \`play\` / \`🎧\` (Música de YouTube)
+◦ \`descarga\` (FB, TikTok, Instagram)
 
 *• FUNCIONES*
-◦ \`robar perfil/tomar perfil\` (@usuario/número)
+◦ \`robar perfil\` (@usuario o número)
+◦ \`tomar perfil\` (@usuario o número)
 
 *• FUNCIÓN ESPÍA*
-◦ \`👁️‍🗨️/👁️/:)\` (Robar fotos/videos/audios de una sola vista)
+◦ \`👁️‍🗨️\` / \`👁️\` / \`:) \` (Ver archivos de una sola vista)
 `;
 
     let caption = `*HOLA, SOY ${assistantName.toUpperCase()}* 
-*— Versión:* ${_package.version} 
+
+*— Versión:* ${_package.version}
 *— Creador:* ${ownerBot[0].name}
 *— Tiempo activo:* ${msToDate(process.uptime() * 1000)}
 
-*NOTA:* _asistente sin prefijo._
+*NOTA:* _Comandos directos sin prefijo._
 
-*— COMANDOS —*
+*— LISTA DE COMANDOS —*
 ${customCommands}`
 
 
