@@ -36,7 +36,7 @@ const handler = async (m, { conn, text, command, isAdmin, isBotAdmin, participan
         await conn.groupSettingUpdate(m.chat, 'not_announcement')
         m.reply(randomResponse('OPEN_SUCCESS'))
 
-    } else if (/renombrar|setname/i.test(command)) {
+    } else if (/renombrar|setnombre/i.test(command)) {
         if (!text) return m.reply(randomResponse('RENAME_MISSING'))
         await conn.groupUpdateSubject(m.chat, text)
         m.reply(randomResponse('RENAME_SUCCESS', text))
@@ -70,7 +70,7 @@ const handler = async (m, { conn, text, command, isAdmin, isBotAdmin, participan
     }
 }
 
-handler.command = /^(cierra|cerrar|abre|abrir|renombrar|setname|desc|setdesc|setfoto|setpp|elimina|kick|ban|echar|sacar|tagall|todos|anuncio)$/i
+handler.command = /^(cierra|cerrar|abre|abrir|renombrar|setnombre|desc|setdesc|setfoto|setpp|elimina|kick|ban|echar|sacar|tagall|todos|anuncio)$/i
 handler.group = true
 handler.admin = true
 
