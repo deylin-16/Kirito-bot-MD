@@ -1,18 +1,20 @@
-let handler = async (m, { conn, usedPrefix, command }) => {
+let handler = async (m, { conn, isROwner }) => {
+    if (!isROwner) return 
 
     try {
-        m.reply(`Acción de reinicio en proceso...`)
-        setTimeout(() => {
-            process.exit(0)
-        }, 3000) 
+        await m.reply(` *Reiniciando servidor...*\nEspere un momento por favor.`)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        if (conn.ws.isOpen) conn.logout() 
+        
+        process.exit(0) 
     } catch (error) {
-        console.log(error)
-        conn.reply(m.chat, `${error}`, m)
+        console.error(error)
+        conn.reply(m.chat, `❌ Error al intentar reiniciar: ${error.message}`, m)
     }
 }
 
-
-handler.command = ['restart', 'reiniciar'] 
+handler.command = ['restart', 'reiniciar']
 handler.rowner = true
 
 export default handler
