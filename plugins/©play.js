@@ -156,21 +156,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
     }
 
     const thumbResized = await resizeImage(await (await fetch(thumbnail)).buffer(), 300);
-
-    
-    
-
-        let assistantName;
-    if (m.isGroup && typeof global.getGroupAssistantConfig === 'function') {
-        const config = global.getGroupAssistantConfig(m.chat);
-        assistantName = config.assistantName;
-    } else {
-        assistantName = global.bot;
-    }
-
-    
-
-
+        global.getAssistantConfig(conn.user.jid)
     
     
     if (["mp3", "play"].includes(command)) {
@@ -188,7 +174,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
           contextInfo: {
              externalAdReply: {
                 title: dl.result.title,
-                body: `${dl.result.author} | ${dl.result.ago}`,
+                body: global.name,
                 mediaType: 2, 
                 previewType: 'PHOTO', 
                 thumbnail: thumbResized, 
