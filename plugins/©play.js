@@ -157,9 +157,7 @@ const handler = async (m, { conn, text, command, usedPrefix }) => {
 
     const thumbResized = await resizeImage(await (await fetch(thumbnail)).buffer(), 300);
 
-    const res3 = await fetch("https://files.catbox.moe/wfd0ze.jpg");
-    const thumb3 = Buffer.from(await res3.arrayBuffer());
-
+    
     
 
         let assistantName;
