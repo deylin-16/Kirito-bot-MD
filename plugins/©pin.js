@@ -96,8 +96,8 @@ let handler = async (m, { conn, text }) => {
       key: { fromMe: false, participant: userJid },
       message: {
         documentMessage: {
-          title: botname,
-          fileName: text`,
+          title: text,
+          fileName: text,
           jpegThumbnail: thumb2
         }
       }
