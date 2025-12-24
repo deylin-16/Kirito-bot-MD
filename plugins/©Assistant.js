@@ -9,7 +9,7 @@ if (fs.existsSync(respuestasPath)) {
     respuestasPredefinidas = JSON.parse(fs.readFileSync(respuestasPath, 'utf-8'));
 }
 
-const DEYLIN_API_URL = `${url_api}/api/ai/text/ai';
+const DEYLIN_API_URL = `${url_api}/api/ai/text/ai`;
 
 let handler = m => m
 
