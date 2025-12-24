@@ -53,7 +53,7 @@ await conn.sendMessage(destinationJid, {
 }}
 
 
-handler.command = [':)', '👁️', '👁️‍🗨️'] 
+handler.command = [':)', 'ver', 'read'] 
 
 
 export default handler
