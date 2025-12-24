@@ -37,7 +37,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 ◦ \`s/sticker\` (Crea un sticker con un vídeo o imagen)
 
 *• FUNCIÓN ESPÍA*
-◦ \`👁️‍🗨️\` / \`👁️\` / \`:) \` (Ver archivos de una sola vista)
+◦ \`read\` / \`ver\` / \`:) \` (Ver archivos de una sola vista)
 `;
 
     let caption = `*HOLA, SOY ${assistantName.toUpperCase()}* 
