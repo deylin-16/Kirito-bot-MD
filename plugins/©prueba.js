@@ -7,12 +7,13 @@ let handler = async (m, { conn }) => {
         text: targetUrl,
         contextInfo: {
             externalAdReply: {
-                title: config.assistantName,
+                title: `hola`,
                 body: `Asistente: ${config.assistantName}`,
                 mediaType: 1,
                 renderLargerThumbnail: false,
                 thumbnailUrl: fixedImage,
                 sourceUrl: targetUrl,
+                // Eliminamos mediaUrl para que no abra la imagen al tocar
                 showAdAttribution: true
             }
         }
