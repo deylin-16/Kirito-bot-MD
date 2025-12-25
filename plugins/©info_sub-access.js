@@ -20,7 +20,7 @@ let handler = async (m, { conn: _envio, usedPrefix }) => {
   }
 
   const message = users.map((v, i) => 
-`[ Sub-Bot #${i + 1} ]
+`[ #${i + 1} ]
 • Nombre: ${v.user.name || 'Asistente'}
 • Enlace: wa.me/${v.user.jid.replace(/[^0-9]/g, '')}
 • Tiempo: ${v.uptime ? convertirMs(Date.now() - v.uptime) : '---'}`).join('\n\n');
