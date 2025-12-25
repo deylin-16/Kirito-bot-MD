@@ -236,7 +236,10 @@ async function connectionUpdate(update) {
     console.log(consoleSuccess(`\n:: CONEXIÓN ESTABLECIDA ::\n> Bot: ${conn.user.name}\n`));
   }
   if (connection === 'close') {
-    await global.reloadHandler(true).catch(console.error);
+    const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+    if (reason !== DisconnectReason.loggedOut) {
+        await global.reloadHandler(true).catch(console.error);
+    }
   }
 }
 
