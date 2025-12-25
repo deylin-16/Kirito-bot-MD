@@ -3,55 +3,44 @@ import fetch from 'node-fetch'
 let handler = async (m, { conn }) => {
     const config = global.getAssistantConfig(conn.user.jid)
     
-    // Variables base
     let redes = 'https://www.deylin.xyz/1' 
-    let icono = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
+    let iconoUrl = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
     let botname = config.assistantName
-    let dev = '🚀 ♡⃝𝑻𝒆𝒄𝒏𝒐-𝑩𝒐𝒕҉ᚐ'
-    let channelRD = { id: '120363160031023229@newsletter', name: 'Canal de Prueba' }
+    
+    // Obtenemos el buffer de la imagen una sola vez
+    let response = await fetch(iconoUrl)
+    let imageBuffer = await response.buffer()
 
-    // Descarga de imagen para el buffer
-    let imageBuffer = await (await fetch(icono)).buffer()
-
-    // --- PRUEBA 1 (Formato Forwarded Newsletter) ---
+    // --- PRUEBA 1: Enlace Puro (Sin MediaType) ---
+    // Esta opción quita la etiqueta de "Foto" para que el sistema lo vea solo como un link
     await conn.sendMessage(m.chat, {
-        text: 'Prueba 1: Forwarded + Buffer',
-        contextInfo: { 
-            isForwarded: true, 
-            forwardedNewsletterMessageInfo: { 
-                newsletterJid: channelRD.id, 
-                serverMessageId: '', 
-                newsletterName: channelRD.name 
-            }, 
-            externalAdReply: { 
-                title: botname, 
-                body: dev, 
-                mediaUrl: null, 
-                description: null, 
-                previewType: "PHOTO", 
-                thumbnail: imageBuffer, 
-                sourceUrl: redes, 
-                mediaType: 1, 
-                renderLargerThumbnail: false 
-            }, 
-            mentionedJid: null 
-        }
-    }, { quoted: m })
-
-    // --- PRUEBA 2 (Formato AdReply Directo con Large Thumbnail) ---
-    await conn.sendMessage(m.chat, {
-        text: 'Prueba 2: Directo + MediaUrl + Large',
+        text: 'Prueba 1: Redirección Forzada (Sin MediaType)',
         contextInfo: {
             externalAdReply: {
                 title: botname,
-                body: dev,
-                mediaType: 1,
-                mediaUrl: redes,
-                sourceUrl: redes,
+                body: '🚀 Toca aquí para entrar',
                 thumbnail: imageBuffer,
-                showAdAttribution: false,
-                containsAutoReply: true,
-                renderLargerThumbnail: true
+                sourceUrl: redes,
+                mediaType: 0, // 0 indica que no es multimedia, evita el visor de fotos
+                renderLargerThumbnail: true,
+                showAdAttribution: true
+            }
+        }
+    }, { quoted: m })
+
+    // --- PRUEBA 2: Formato Miniatura Estándar ---
+    // A veces el error de "aplicación no compatible" lo da el modo de imagen grande
+    await conn.sendMessage(m.chat, {
+        text: 'Prueba 2: Formato Miniatura Estándar',
+        contextInfo: {
+            externalAdReply: {
+                title: 'CLICK AQUÍ PARA EL CANAL',
+                body: botname,
+                thumbnail: imageBuffer,
+                sourceUrl: redes,
+                mediaType: 1,
+                renderLargerThumbnail: false, // Imagen pequeña para evitar errores de renderizado
+                showAdAttribution: false
             }
         }
     }, { quoted: m })
