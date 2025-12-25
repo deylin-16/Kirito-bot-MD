@@ -34,7 +34,7 @@ global.design = async (conn, m, text = '') => {
         return await conn.sendMessage(m.chat, { text: text }, { quoted: m })
     }
 
-    let canalLink = 'https://www.deylin.xyz/1' 
+    let canalLink = ' https://www.deylin.xyz ' 
     let buffer
     
     if (config.assistantImage) {
@@ -49,8 +49,8 @@ global.design = async (conn, m, text = '') => {
         contextInfo: {
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
-                newsletterJid: '120363160031023229@newsletter',
-                newsletterName: 'Comunidad Oficial',
+                newsletterJid: '120363385732156828@newsletter',
+                newsletterName: config.assistantName,
                 serverMessageId: 1
             },
             externalAdReply: {
