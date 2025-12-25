@@ -21,6 +21,43 @@ global.sessions = 'sessions'
 global.jadi = 'sessions_sub_assistant';
 global.url_api = 'https://api.deylin.xyz'
 
+
+global.design = async (conn, m, text = '') => {
+    const config = global.getAssistantConfig(conn.user.jid)
+    const ownerJid = global.owner[0][0] + '@s.whatsapp.net'
+    
+    if (conn.user.jid === ownerJid) {
+        return await conn.sendMessage(m.chat, { text: text }, { quoted: m })
+    }
+
+    let canalLink = 'https://www.deylin.xyz/1' 
+    let iconoUrl = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
+    
+    let buffer = await global.getBuffer(iconoUrl)
+
+    return await conn.sendMessage(m.chat, {
+        text: text || canalLink,
+        contextInfo: {
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterJid: '120363160031023229@newsletter',
+                newsletterName: 'Comunidad Oficial',
+                serverMessageId: 1
+            },
+            externalAdReply: {
+                title: config.assistantName,
+                body: '🚀 Toca para ver canal',
+                thumbnail: buffer,
+                mediaType: 1,
+                renderLargerThumbnail: true,
+                showAdAttribution: true,
+                sourceUrl: canalLink,
+                mediaUrl: canalLink
+            }
+        }
+    }, { quoted: m })
+}
+
 global.getBuffer = async (url, options = {}) => {
     try {
         var res = await axios({
@@ -60,18 +97,8 @@ else saludo = 'Lɪɴᴅᴀ Nᴏᴄʜᴇ 🌃'
 global.saludo = saludo;
 
 let Names = [
-    'ᴊɪᴊɪ - ᴀssɪsᴛᴀɴᴛ', 
-    '𝕵𝖎𝖏𝖎 - 𝕬𝖘𝖘𝖎𝖘𝖙𝖆𝖓𝖙', 
-    '🄹🄸🄹🄸 - 🄰🅂🅂🄸🅂🅃🄰🄽🅃', 
-    '𝒥𝒾𝒿𝒾 - 𝒜𝓈𝓈𝒾𝓈𝓉🇦𝓃𝓉', 
-    '🅹🅸🅹🅸 - 🄰🅂🅂🄸🅂🅃🄰🅽🆃', 
-    '𝐉𝐢𝐣𝐢 - 𝐀𝐬𝐬𝐢𝐬𝐭𝐚𝐧𝐭', 
-    'Ⓙⓘⓙⓘ - Ⓐⓢⓢⓘⓢⓣⓐⓝⓣ', 
-    '𝙹𝙸𝹹𝙸 - 𝙰𝚂𝚂𝙸𝚂𝚃𝙰𝙽𝚃', 
-    '¡ſıſı - ʇuɐʇsıssɐ', 
-    'J I J I - A S S I S T A N T',
+    'ᴊɪᴊɪ - ᴀssɪsᴛᴀɴᴛ', '𝕵𝖎𝖏𝖎 - 𝕬𝖘𝖘𝖎𝖘𝖙𝖆𝖓𝖙', '🄹🄸🄹🄸 - 🄰🅂🅂🄸🅂🅃🄰🄽🅃', '𝒥𝒾𝒿𝒾 - 𝒜𝓈𝓈𝒾𝓈𝓉🇦𝓃𝓉'
 ];
-
 global.bot = Names[Math.floor(Math.random() * Names.length)];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -83,9 +110,7 @@ global.getAssistantConfig = (botJid) => {
         if (fs.existsSync(DB_PATH)) {
             configs = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'))
         }
-    } catch (e) {
-        console.error(e)
-    }
+    } catch (e) { console.error(e) }
 
     const sessionConfig = configs[botJid]
     global.name = sessionConfig?.assistantName || global.bot || "Asistente"
@@ -93,10 +118,7 @@ global.getAssistantConfig = (botJid) => {
         ? Buffer.from(sessionConfig.assistantImage, 'base64') 
         : "https://i.ibb.co/pjx0z1G6/b5897d1aa164ea5053165d4a04c2f2fa.jpg"
 
-    return {
-        assistantName: global.name,
-        assistantImage: global.img
-    }
+    return { assistantName: global.name, assistantImage: global.img }
 }
 
 let file = fileURLToPath(import.meta.url)
