@@ -7,14 +7,13 @@ let handler = async (m, { conn }) => {
         text: targetUrl,
         contextInfo: {
             externalAdReply: {
-                title: `CÓDIGO DE EMPAREJAMIENTO`,
+                title: `Hola`,
                 body: `Asistente: ${config.assistantName}`,
-                mediaType: 2, 
+                mediaType: 1,
                 renderLargerThumbnail: true,
                 thumbnailUrl: fixedImage,
                 sourceUrl: targetUrl,
-                mediaUrl: targetUrl,
-                showAdAttribution: false
+                showAdAttribution: true
             }
         }
     }, { quoted: m })
