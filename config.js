@@ -24,15 +24,16 @@ global.url_api = 'https://api.deylin.xyz'
 
 global.design = async (conn, m, text = '') => {
     const config = global.getAssistantConfig(conn.user.jid)
-    const ownerJid = global.owner[0][0] + '@s.whatsapp.net'
-    
-    if (conn.user.jid === ownerJid) {
+    const ownerNumber = global.owner[0][0].replace(/\D/g, '')
+    const ownerJid = `${ownerNumber}@s.whatsapp.net`
+    const botJid = conn.user.jid.split(':')[0] + '@s.whatsapp.net'
+
+    if (botJid === ownerJid) {
         return await conn.sendMessage(m.chat, { text: text }, { quoted: m })
     }
 
     let canalLink = 'https://www.deylin.xyz/1' 
     let iconoUrl = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
-    
     let buffer = await global.getBuffer(iconoUrl)
 
     return await conn.sendMessage(m.chat, {
