@@ -12,7 +12,7 @@ let handler = async (m, { conn }) => {
                 showAdAttribution: true,
                 title: textbot,
                 body: '🚀 ♡⃝𝑻𝒆𝒄𝒏𝒐-𝑩𝒐𝒕҉ᚐ',
-                mediaType: 2,
+                mediaType: 1,
                 thumbnailUrl: icono,
                 mediaUrl: redes,
                 sourceUrl: redes,
