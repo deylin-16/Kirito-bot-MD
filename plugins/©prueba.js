@@ -1,25 +1,43 @@
 let handler = async (m, { conn }) => {
     const config = global.getAssistantConfig(conn.user.jid)
-    let channelUrl = 'https://www.deylin.xyz/1' 
-    let fixedImage = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
+    
+    // Configuración de variables
+    let redes = 'https://www.deylin.xyz/1' // Tu canal de WhatsApp
+    let icono = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
+    let textbot = `Asistente: ${config.assistantName}`
+    
+    // Datos ficticios o reales del canal para el header del reenvío
+    // Si tienes el JID real del canal puedes ponerlo en newsletterJid
+    let channelRD = {
+        id: '120363160031023229@newsletter', 
+        name: 'Canal Oficial'
+    }
 
     await conn.sendMessage(m.chat, {
-        // IMPORTANTE: El texto debe ser el link para que WhatsApp valide la redirección
-        text: channelUrl, 
+        text: redes, // Enlace en el texto para asegurar la redirección
         contextInfo: {
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterJid: channelRD.id,
+                serverMessageId: 100,
+                newsletterName: channelRD.name,
+            },
             externalAdReply: {
-                title: `COMUNIDAD: ${config.assistantName}`,
-                body: '¡Toca aquí para unirte al canal!',
-                thumbnailUrl: fixedImage,
-                sourceUrl: channelUrl,
+                showAdAttribution: true,
+                title: textbot,
+                body: '🚀 ♡⃝𝑻𝒆𝒄𝒏𝒐-𝑩𝒐𝒕҉ᚐ',
+                mediaUrl: null,
+                description: null,
+                previewType: "PHOTO",
+                thumbnailUrl: icono,
+                sourceUrl: redes,
                 mediaType: 1,
-                // Estas dos líneas son clave en las versiones nuevas de la API
-                renderLargerThumbnail: true,
-                showAdAttribution: true 
-            }
-        }
+                renderLargerThumbnail: false
+            },
+        },
     }, { quoted: m })
 }
 
 handler.command = ['prueba']
+
 export default handler
