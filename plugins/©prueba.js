@@ -5,8 +5,20 @@ let handler = async (m, { conn }) => {
     let textbot = `Asistente: ${config.assistantName}`
 
     await conn.sendMessage(m.chat, {
-        image: { url: icono },
-        caption: `\( {textbot}\n🚀 ♡⃝𝑻𝒆𝒄𝒏𝒐-𝑩𝒐𝒕҉ᚐ\n\n \){redes}`
+        text: redes,
+        contextInfo: {
+            isForwarded: true,
+            externalAdReply: {
+                showAdAttribution: true,
+                title: textbot,
+                body: '🚀 ♡⃝𝑻𝒆𝒄𝒏𝒐-𝑩𝒐𝒕҉ᚐ',
+                mediaType: 2,
+                thumbnailUrl: icono,
+                mediaUrl: redes,
+                sourceUrl: redes,
+                renderLargerThumbnail: true
+            }
+        }
     }, { quoted: m })
 }
 
