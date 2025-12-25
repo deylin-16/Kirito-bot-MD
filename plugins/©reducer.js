@@ -22,7 +22,7 @@ let handler = async (m, { conn, text }) => {
     image.resize(width, height);
 
     let buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-    await conn.sendFile(m.chat, buffer, 'reducida.jpg', `${emoji} Imagen reducida a *${width}×${height}*`, m);
+    await conn.sendFile(m.chat, buffer, 'reducida.jpg', ` Imagen reducida a *${width}×${height}*`, m);
   } catch (e) {
     console.error(e);
     m.reply('⚠️ Ocurrió un error al procesar la imagen.');
