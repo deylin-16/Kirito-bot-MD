@@ -3,7 +3,7 @@ import fs from 'fs'
 
 let handler = async (m, { conn, command, usedPrefix }) => {
     
-    let dbReacciones = JSON.parse(fs.readFileSync('./src/social_reacciones.json'))
+    let dbReacciones = JSON.parse(fs.readFileSync('./db/social_reactions.json'))
     
     let cmd = command.toLowerCase()
     let actionKey = Object.keys(dbReacciones).find(key => key === cmd || dbReacciones[key].en === cmd)
