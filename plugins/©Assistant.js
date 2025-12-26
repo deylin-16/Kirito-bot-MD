@@ -23,7 +23,7 @@ handler.all = async function (m) {
     if (m.fromMe) return
 
     const botJid = conn.user.jid
-    const isOrBot = /(jiji|gato|asistente)/i.test(m.text)
+    const isOrBot = /(bot)/i.test(m.text)
     const isReply = m.quoted && m.quoted.sender === botJid
     const isMention = m.mentionedJid && m.mentionedJid.includes(botJid) 
 
