@@ -1,56 +1,38 @@
-import fs from 'fs'
-import path from 'path'
+import ImageKit from "imagekit"
+import fetch from "node-fetch"
 
-const handler = async (m, { conn }) => {
-    // Carpetas donde buscaremos errores
-    const directories = ['./plugins', './lib', './src', './']
-    let report = []
+const imagekit = new ImageKit({
+    publicKey: "public_UilqC3N3XUQp2rRJcGGhLhaXKSY=",
+    privateKey: "private_ojSXwbW+qGniUaMFMzzVNWhiuI8=",
+    urlEndpoint: "https://ik.imagekit.io/pm10ywrf6f"
+})
+
+let handler = async (m, { conn, command }) => {
+    let q = m.quoted ? m.quoted : m
+    let mime = (q.msg || q).mimetype || ''
+    if (!mime) return m.reply(`Responde a una imagen o video con el comando *${command}*`)
     
-    await m.reply('🚀 *Iniciando escaneo de sintaxis...* Por favor espera.')
+    await m.reply('Procesando y subiendo archivo...')
+    
+    let media = await q.download()
+    let fileName = `${Date.now()}.${mime.split('/')[1]}`
 
-    const scanDir = (dir) => {
-        const files = fs.readdirSync(dir)
+    imagekit.upload({
+        file: media,
+        fileName: fileName,
+        folder: "/bot_uploads"
+    }, async (err, result) => {
+        if (err) return m.reply('Error al subir: ' + err.message)
+        
+        let txt = `*ARCHIVO SUBIDO EXITOSAMENTE*\n\n`
+        txt += `*ID:* ${result.fileId}\n`
+        txt += `*Nombre:* ${result.name}\n`
+        txt += `*URL:* ${result.url}\n`
+        txt += `*Tipo:* ${result.fileType}`
 
-        for (const file of files) {
-            const fullPath = path.join(dir, file)
-            let stat
-            try {
-                stat = fs.statSync(fullPath)
-            } catch (e) { continue }
-
-            if (stat.isDirectory()) {
-                // Omitir carpetas pesadas o innecesarias
-                if (['node_modules', '.git', 'sessions', 'db'].includes(file)) continue
-                scanDir(fullPath)
-            } else if (file.endsWith('.js')) {
-                try {
-                    const code = fs.readFileSync(fullPath, 'utf8')
-                    // Intentamos validar la sintaxis creando una función con el código
-                    new Function('import', 'export', code)
-                } catch (err) {
-                    report.push(`❌ *Archivo:* \`${fullPath}\`\n⚠️ *Error:* ${err.message}\n───────────`)
-                }
-            }
-        }
-    }
-
-    try {
-        directories.forEach(d => {
-            if (fs.existsSync(d)) scanDir(d)
-        })
-    } catch (e) {
-        return m.reply(`❌ Error crítico durante el escaneo: ${e.message}`)
-    }
-
-    if (report.length > 0) {
-        let finalMsg = `🔍 *RESULTADOS DEL ESCANEO SCAN*\n\n${report.join('\n\n')}\n\n💡 *Consejo:* Revisa las líneas mencionadas, usualmente falta cerrar una llave \`}\` o hay un \`return\` fuera de una función.`
-        await m.reply(finalMsg)
-    } else {
-        await m.reply('✅ *Escaneo finalizado:* No se detectaron errores de sintaxis en los archivos .js analizados.')
-    }
+        await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
+    })
 }
 
-handler.command = ['scan']
-handler.rowner = true // Solo tú puedes usarlo
-
+handler.command = ['increase']
 export default handler
