@@ -26,7 +26,8 @@ global.url_api = 'https://api.deylin.xyz'
     
                 
 
-   global.design = async (conn, m, text = '') => {
+   
+ global.design = async (conn, m, text = '') => {
     const config = global.getAssistantConfig(conn.user.jid)
     const mainBotJid = global.conn?.user?.jid.split('@')[0] 
     const currentBotJid = conn.user.jid.split('@')[0]
@@ -38,9 +39,9 @@ global.url_api = 'https://api.deylin.xyz'
     let canalLink = 'https://www.deylin.xyz' 
     let buffer
 
-    if (config.assistantIcon) {
+    if (config && config.assistantIcon) {
         buffer = Buffer.from(config.assistantIcon, 'base64')
-    } else if (config.assistantImage) {
+    } else if (config && config.assistantImage) {
         buffer = Buffer.from(config.assistantImage, 'base64')
     } else {
         let iconoUrl = 'https://i.ibb.co/g8PsK57/IMG-20251224-WA0617.jpg'
@@ -58,6 +59,7 @@ global.url_api = 'https://api.deylin.xyz'
             },
             externalAdReply: {
                 title: config.assistantName || 'Asistente',
+                body: '🚀 Toca para ver canal',
                 thumbnail: buffer,
                 mediaType: 1,
                 renderLargerThumbnail: false,
@@ -68,7 +70,7 @@ global.url_api = 'https://api.deylin.xyz'
         }
     }, { quoted: m })
 }
-             
+
 
  
 
