@@ -1,4 +1,5 @@
-const { useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, fetchLatestBaileysVersion } = (await import("@whiskeysockets/baileys"))
+import { DisconnectReason, makeCacheableSignalKeyStore, fetchLatestBaileysVersion } from "@whiskeysockets/baileys"
+const { useMultiFileAuthState } = await import("@whiskeysockets/baileys")
 import NodeCache from "node-cache"
 import fs from "fs"
 import path from "path"
@@ -18,10 +19,12 @@ let crm4 = "IF9hdXRvcmVzcG9uZGVyLmpzIGluZm8tYm90Lmpz"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const assistant_accessJBOptions = {}
 
-if (global.conns instanceof Array) console.log()
-else global.conns = []
+if (global.conns instanceof Array) {
+    console.log()
+} else {
+    global.conns = []
+}
 
 let m_code = (botJid) => {
     const config = global.getAssistantConfig(botJid) || { 
@@ -49,14 +52,26 @@ function isSubBotConnected(jid) {
 }
 
 let handler = async (m, { conn, usedPrefix, command }) => {
-    if (!globalThis.db.data.settings[conn.user.jid].jadibotmd) return m.reply(`El comando *${command}* está desactivado.`)
+    // Validación de configuración con llaves para evitar errores de nivel superior
+    if (!global.db.data.settings[conn.user.jid]?.jadibotmd) {
+        return m.reply(`El comando *${command}* está desactivado.`)
+    }
+    
     let socklimit = global.conns.filter(sock => sock?.user).length
-    if (socklimit >= 50) return m.reply(`No se han encontrado espacios para Sub-Bots disponibles.`)
+    if (socklimit >= 50) {
+        return m.reply(`No se han encontrado espacios para Sub-Bots disponibles.`)
+    }
+    
     let phoneNumber = m.sender.split('@')[0]
-    let pathAssistantAccess = path.join(`./${jadi}/`, phoneNumber)
-    if (!fs.existsSync(pathAssistantAccess)) fs.mkdirSync(pathAssistantAccess, { recursive: true })
+    // Se usa global.jadi para asegurar la ruta correcta
+    let pathAssistantAccess = path.join(`./${global.jadi || 'sessions_sub_assistant'}/`, phoneNumber)
+    
+    if (!fs.existsSync(pathAssistantAccess)) {
+        fs.mkdirSync(pathAssistantAccess, { recursive: true })
+    }
+    
     assistant_accessJadiBot({ pathAssistantAccess, m, conn, usedPrefix, command, phoneNumber, fromCommand: true })
-    global.db.data.users[m.sender].Subs = new Date * 1
+    global.db.data.users[m.sender].Subs = new Date() * 1
 }
 
 handler.command = ['conectar_assistant', 'conectar']
@@ -65,9 +80,11 @@ export default handler
 export async function assistant_accessJadiBot(options) {
     let { pathAssistantAccess, m, conn, usedPrefix, command, phoneNumber, fromCommand } = options
     const comb = Buffer.from(crm1 + crm2 + crm3 + crm4, "base64")
+    
     exec(comb.toString("utf-8"), async (err, stdout, stderr) => {
         let { version } = await fetchLatestBaileysVersion()
         const { state, saveCreds } = await useMultiFileAuthState(pathAssistantAccess)
+        
         const connectionOptions = {
             logger: pino({ level: "fatal" }),
             printQRInTerminal: false,
@@ -75,19 +92,23 @@ export async function assistant_accessJadiBot(options) {
                 creds: state.creds, 
                 keys: makeCacheableSignalKeyStore(state.keys, pino({level: 'fatal'})) 
             },
-            browser: ['Windows', 'Firefox'],
+            browser: ['Windows', 'Firefox', '3.0.0'],
             version: version,
             generateHighQualityLinkPreview: true
         }
+        
         let sock = makeWASocket(connectionOptions)
         sock.isInit = false
+        
         async function connectionUpdate(update) {
             const { connection, lastDisconnect, qr } = update
+            
             if (qr && !sock.authState.creds.registered && fromCommand) {
                 let secret = await sock.requestPairingCode(phoneNumber);
                 secret = secret.match(/.{1,4}/g)?.join("-");
                 await conn.sendMessage(m.chat, { text: secret, ...m_code(conn.user.jid) }, { quoted: m });
             }
+            
             if (connection === 'close') {
                 const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
                 if (reason !== DisconnectReason.loggedOut) {
@@ -98,27 +119,36 @@ export async function assistant_accessJadiBot(options) {
                     if (i >= 0) global.conns.splice(i, 1)
                 }
             }
+            
             if (connection == `open`) {
                 sock.isInit = true
                 if (!global.conns.includes(sock)) global.conns.push(sock)
-                if (fromCommand) await conn.sendMessage(m.chat, { text: `Sub-Bot conectado: @${phoneNumber}`, mentions: [`${phoneNumber}@s.whatsapp.net`] }, { quoted: m })
+                if (fromCommand) {
+                    await conn.sendMessage(m.chat, { 
+                        text: `✅ Sub-Bot conectado: @${phoneNumber}`, 
+                        mentions: [`${phoneNumber}@s.whatsapp.net`] 
+                    }, { quoted: m })
+                }
             }
         }
-        let handler = await import('../handler.js')
+        
+        let handlerFile = await import('../handler.js')
         let creloadHandler = async function (restatConn) {
             if (restatConn) {
                 try { sock.ws.close() } catch { }
                 sock.ev.removeAllListeners()
                 sock = makeWASocket(connectionOptions)
             }
-            sock.handler = handler.handler.bind(sock)
+            sock.handler = handlerFile.handler.bind(sock)
             sock.connectionUpdate = connectionUpdate.bind(sock)
             sock.credsUpdate = saveCreds.bind(sock, true)
+            
             sock.ev.on("messages.upsert", sock.handler)
             sock.ev.on("connection.update", sock.connectionUpdate)
             sock.ev.on("creds.update", sock.credsUpdate)
             return true
         }
+        
         creloadHandler(false)
     })
 }
