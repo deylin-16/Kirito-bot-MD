@@ -1,47 +1,37 @@
 import { WAMessageStubType } from '@whiskeysockets/baileys'
-import fetch from 'node-fetch'
 
 export async function before(m, { conn, participants, groupMetadata }) {
-    let botSettings = global.db.data.settings[conn.user.jid] || {}
-    if (botSettings.soloParaJid) return
     if (!m.messageStubType || !m.isGroup) return true
 
-    const totalMembers = participants.length
-    const who = m.messageStubParameters?.[0]
+    const botSettings = global.db.data.settings[conn.user.jid] || {}
+    const mainBotJid = global.conn?.user?.jid
+    const currentBotJid = conn.user.jid
 
-    if (!who) {
-        return
-    }
-
-    if (m.messageStubType !== WAMessageStubType.GROUP_PARTICIPANT_ADD && m.messageStubType !== WAMessageStubType.GROUP_CHANGE_MEMBERS) {
-        return
-    }
+    if (currentBotJid === mainBotJid && botSettings.soloParaJid) return true
 
     const chat = global.db.data.chats[m.chat]
-    if (!chat?.welcome || !chat?.customWelcome) return
+    if (!chat?.welcome) return true
 
-    const user = participants.find(p => p.jid === who)
-    const userName = user?.notify || who.split('@')[0]
+    const isAdd = m.messageStubType === WAMessageStubType.GROUP_PARTICIPANT_ADD || m.messageStubType === WAMessageStubType.GROUP_CHANGE_MEMBERS
+    if (!isAdd) return true
+
+    const who = m.messageStubParameters?.[0]
+    if (!who) return true
+
+    const totalMembers = participants.length
+    const nombreDelGrupo = groupMetadata.subject
     const mentionListText = `@${who.split('@')[0]}`
 
-    let ppUrl
-    const defaultPp = 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
-
+    let ppUrl = 'https://i.ibb.co/jPSF32Pz/9005bfa156f1f56fb2ac661101d748a5.jpg'
     try {
-        
         ppUrl = await conn.profilePictureUrl(who, 'image')
     } catch {
         try {
-            
             ppUrl = await conn.profilePictureUrl(m.chat, 'image')
-        } catch {
-            
-            ppUrl = defaultPp
-        }
+        } catch {}
     }
-    
+
     const welcomeText = chat.customWelcome || `bienvenido @user a @grupo somos @total\n\n> Un administrador puede editar esta bienvenida con el comando \`setwelcome\``
-    const nombreDelGrupo = groupMetadata.subject
 
     let finalCaption = welcomeText
         .replace(/\\n/g, '\n')
@@ -49,31 +39,24 @@ export async function before(m, { conn, participants, groupMetadata }) {
         .replace(/@grupo/g, nombreDelGrupo)
         .replace(/@total/g, totalMembers)
 
-    let fkontak
+    let fkontak = {
+        key: { fromMe: false, participant: "0@s.whatsapp.net", remoteJid: "status@broadcast" },
+        message: { contactMessage: { displayName: `BIENVENID@ A ${nombreDelGrupo}`, vcard: `BEGIN:VCARD\nVERSION:3.0\nN:;Admin;;;\nFN:Admin\nEND:VCARD` } }
+    }
 
     try {
-        fkontak = {
-            key: { fromMe: false, participant: "0@s.whatsapp.net" },
-            message: { locationMessage: { name: `BIENVENID@ A _ ${nombreDelGrupo}`} }
+        if (typeof global.design === 'function' && currentBotJid !== mainBotJid) {
+            await global.design(conn, m, finalCaption)
+        } else {
+            await conn.sendMessage(m.chat, {
+                image: { url: ppUrl },
+                caption: finalCaption.trim(),
+                mentions: [who]
+            }, { quoted: fkontak })
         }
     } catch (e) {
-
+        console.error('Error en Welcome:', e)
     }
 
-    const jid = m.chat
-
-    const mentionId = who ? [who] : []
-
-    const imageMessage = {
-        image: { url: ppUrl }, 
-        caption: finalCaption.trim(), 
-        contextInfo: { 
-            mentionedJid: mentionId, 
-        }
-    }
-
-
-    await conn.sendMessage(jid, imageMessage, {
-        quoted: fkontak 
-    })
+    return true
 }
