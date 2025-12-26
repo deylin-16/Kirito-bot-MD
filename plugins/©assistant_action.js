@@ -23,7 +23,7 @@ const randomResponse = (key, ...args) => {
     return responses[Math.floor(Math.random() * responses.length)]
 }
 
-const handler = async (m, { conn, text, command, isAdmin, isBotAdmin, participants }) => {
+const handler = async (m, { conn, text, command, isAdmin, isBotAdmin, participants, usedPrefix }) => {
     if (!m.isGroup) return
     if (!isAdmin) return m.reply(randomResponse('NO_ADMIN'))
     if (!isBotAdmin) return m.reply(randomResponse('NO_BOT_ADMIN'))
@@ -42,17 +42,25 @@ const handler = async (m, { conn, text, command, isAdmin, isBotAdmin, participan
         m.reply(randomResponse('RENAME_SUCCESS', text))
 
    } else if (/desc|setdesc/i.test(command)) {
-    let newDesc = text || (m.quoted ? m.quoted.text : '')
-    if (!newDesc || newDesc.length === 0) return m.reply(randomResponse('DESC_MISSING'))
+    let newDesc = m.quoted ? m.quoted.text : null;
     
+    if (!newDesc && m.text) {
+        let hach = new RegExp(`^\\${usedPrefix}${command}`, 'i');
+        let match = m.text.match(hach);
+        if (match) {
+            newDesc = m.text.slice(match[0].length).trim();
+        }
+    }
+
+    if (!newDesc) return m.reply(randomResponse('DESC_MISSING'))
+
     try {
         await conn.groupUpdateDescription(m.chat, newDesc)
         m.reply(randomResponse('DESC_SUCCESS'))
     } catch (e) {
         console.error(e)
-        m.reply('❌ Error al actualizar la descripción. Asegúrate de que el bot sea administrador.')
+        m.reply('❌ Error al actualizar la descripción.')
     }
-
 
     } else if (/setfoto|setpp/i.test(command)) {
         let q = m.quoted ? m.quoted : m
