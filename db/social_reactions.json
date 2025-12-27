@@ -7,15 +7,15 @@
     "txt_mencion": "@user le dio un beso a @target 💋"
   },
   "beso2": {
-    "search": "anime boy kiss",
-    "emoji": "👬",
-    "txt_solo": "@user está sintiendo mariposas... 👬",
-    "txt_grupo": "@user le manda besos especiales a los chicos 👬💋",
-    "txt_mencion": "@user y @target se dieron un beso apasionado 👬💕"
+    "search": "anime kiss gay",
+    "emoji": "🏳️‍🌈",
+    "txt_solo": "@user está sintiendo mariposas... 🏳️‍🌈",
+    "txt_grupo": "@user le manda besos especiales a los chicos 🏳️‍🌈💋",
+    "txt_mencion": "@user y @target se dieron un beso apasionado 🏳️‍🌈💕"
   },
   "beso3": {
     "search": "anime girl kiss",
-    "emoji": "👭",
+    "emoji": "🏳️‍🌈",
     "txt_solo": "@user está muy cariñosa... 👭",
     "txt_grupo": "@user reparte besos entre las chicas 👭💋",
     "txt_mencion": "@user y @target se dieron un lindo beso 👭💕"
@@ -29,7 +29,7 @@
   },
   "abrazo2": {
     "search": "anime boy hug",
-    "emoji": "👬",
+    "emoji": "🏳️‍🌈",
     "txt_solo": "@user busca un abrazo... 👬",
     "txt_grupo": "@user abraza a sus mejores amigos 👬",
     "txt_mencion": "@user le dio un fuerte abrazo a @target 👬❤️"
