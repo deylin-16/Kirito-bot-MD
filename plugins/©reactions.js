@@ -1,9 +1,11 @@
 import fetch from 'node-fetch'
 import fs from 'fs'
+import { join } from 'path'
 
 let handler = async (m, { conn, command, usedPrefix }) => {
-    const path = '../db/social_reactions.json'
-    if (!fs.existsSync(path)) return m.reply('❌ No se encontró el archivo: db/social_reactions.json')
+    const path = join(process.cwd(), 'db', 'social_reactions.json')
+    
+    if (!fs.existsSync(path)) return m.reply(`❌ No se encontró el archivo en: ${path}`)
 
     let dbReacciones = JSON.parse(fs.readFileSync(path, 'utf-8'))
     let cmd = command.toLowerCase()
