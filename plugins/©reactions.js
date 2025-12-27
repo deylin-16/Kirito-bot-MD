@@ -1,28 +1,24 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
 import fs from 'fs'
 import { join } from 'path'
 
 let handler = async (m, { conn, command }) => {
     const path = join(process.cwd(), 'db', 'social_reactions.json')
-    
-    if (!fs.existsSync(path)) return m.reply('❌ JSON no encontrado')
+    if (!fs.existsSync(path)) return
 
     let dbReacciones = JSON.parse(fs.readFileSync(path, 'utf-8'))
     let cmd = command.toLowerCase()
-    let actionKey = Object.keys(dbReacciones).find(key => key === cmd || dbReacciones[key].en === cmd)
-
-    if (!actionKey) return
-
-    let data = dbReacciones[actionKey]
-    let user = m.sender
-    let target = null
-
-    if (m.mentionedJid && m.mentionedJid[0]) {
-        target = m.mentionedJid[0]
-    } else if (m.quoted) {
-        target = m.quoted.sender
+    
+    const translate = { 
+        'kiss': 'beso', 'hug': 'abrazo', 'slap': 'golpe', 'kill': 'matar',
+        'pat': 'acariciar', 'dance': 'bailar' 
     }
+    let key = translate[cmd] || cmd
+    let data = dbReacciones[key]
+    if (!data) return
 
+    let user = m.sender
+    let target = m.mentionedJid[0] ? m.mentionedJid[0] : (m.quoted ? m.quoted.sender : null)
     let textoFinal = ''
     let menciones = [user]
 
@@ -37,32 +33,30 @@ let handler = async (m, { conn, command }) => {
         textoFinal = data.txt_grupo.replace('@user', `@${user.split('@')[0]}`)
     }
 
-    let videoUrl = data.enlaces[Math.floor(Math.random() * data.enlaces.length)]
-
     try {
-        let response = await fetch(videoUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
-            }
-        })
+        const { data: tenorRes } = await axios.get(
+            `https://api.tenor.com/v1/search?q=${encodeURIComponent(data.search)}&key=LIVDSRZULELA&limit=10`
+        )
+
+        if (!tenorRes?.results?.length) throw new Error()
         
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        let buffer = await response.buffer()
+        
+        const randomGif = tenorRes.results[Math.floor(Math.random() * tenorRes.results.length)]
+        const videoUrl = randomGif.media[0].mp4.url
 
         await conn.sendMessage(m.chat, {
-            video: buffer,
+            video: { url: videoUrl },
             caption: textoFinal,
             gifPlayback: true,
             mentions: menciones
         }, { quoted: m })
 
     } catch (e) {
-        console.error(e)
-        m.reply(`❌ Error: El servidor del GIF no respondió. Intenta de nuevo.`)
+        m.reply('❌ Error al conectar con Tenor.')
     }
 }
 
-handler.command = /^(beso|kiss|abrazo|hug|golpe|slap|patada|kick|matar|kill|saludo|hello|triste|sad|reir|laugh|enojado|angry|comer|eat|dormir|sleep|bailar|dance|correr|run|disparar|shoot|cachetada|slap2|asustado|scared|pensar|think|tímido|shy|morder|bite|acariciar|pat|lamer|lick|mirar|stare|besogay|kiss2|aburrido|bored|asombro|wow)$/i
+handler.command = /^(beso|kiss|abrazo|hug|golpe|slap|matar|kill|pat|acariciar|bailar|dance)$/i
 handler.group = true
 
 export default handler
