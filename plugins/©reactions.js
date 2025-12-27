@@ -13,7 +13,7 @@ let handler = async (m, { conn, command }) => {
         'kiss': 'beso', 'kiss2': 'beso2', 'kiss3': 'beso3',
         'hug': 'abrazo', 'hug2': 'abrazo2', 
         'slap': 'golpe', 'kill': 'matar', 'pat': 'acariciar', 
-        'dance': 'bailar', 'kick': 'patada', 'laugh': 'reir',
+        'dance': 'bailar', 'patada', 'laugh': 'reir',
         'cry': 'triste', 'sad': 'triste', 'angry': 'enojado', 
         'wave': 'saludo', 'bite': 'morder', 'lick': 'lamer', 
         'sleep': 'dormir', 'eat': 'comer', 'scare': 'asustar', 
@@ -65,7 +65,7 @@ let handler = async (m, { conn, command }) => {
     }
 }
 
-handler.command = /^(beso|kiss|beso2|kiss2|beso3|kiss3|abrazo|hug|hug2|abrazo2|golpe|slap|matar|kill|pat|acariciar|bailar|dance|patada|kick|reir|laugh|triste|sad|cry|enojado|angry|saludo|wave|morder|bite|lamer|lick|dormir|sleep|comer|eat|asustar|scare|disparar|shoot|correr|run|mirar|stare|asombro|wow|tímido|blush)$/i
+handler.command = /^(beso|kiss|beso2|kiss2|beso3|kiss3|abrazo|hug|hug2|abrazo2|golpe|slap|matar|kill|pat|acariciar|bailar|dance|patada|reir|laugh|triste|sad|cry|enojado|angry|saludo|wave|morder|bite|lamer|lick|dormir|sleep|comer|eat|asustar|scare|disparar|shoot|correr|run|mirar|stare|asombro|wow|tímido|blush)$/i
 handler.group = true
 
 export default handler
