@@ -1,26 +1,170 @@
 {
   "beso": {
     "search": "anime kiss",
+    "emoji": "😘",
     "txt_solo": "@user está lanzando besos al aire... 💋",
     "txt_grupo": "@user le envió un beso a todo el grupo! 😘",
     "txt_mencion": "@user le dio un beso a @target 💋"
   },
+  "beso2": {
+    "search": "anime boy kiss",
+    "emoji": "👬",
+    "txt_solo": "@user está sintiendo mariposas... 👬",
+    "txt_grupo": "@user le manda besos especiales a los chicos 👬💋",
+    "txt_mencion": "@user y @target se dieron un beso apasionado 👬💕"
+  },
+  "beso3": {
+    "search": "anime girl kiss",
+    "emoji": "👭",
+    "txt_solo": "@user está muy cariñosa... 👭",
+    "txt_grupo": "@user reparte besos entre las chicas 👭💋",
+    "txt_mencion": "@user y @target se dieron un lindo beso 👭💕"
+  },
   "abrazo": {
     "search": "anime hug",
+    "emoji": "🫂",
     "txt_solo": "@user se está abrazando a sí mismo... 🤗",
     "txt_grupo": "@user les da un fuerte abrazo grupal! ❤️",
     "txt_mencion": "@user abrazó a @target con mucho cariño 🤗"
   },
+  "abrazo2": {
+    "search": "anime boy hug",
+    "emoji": "👬",
+    "txt_solo": "@user busca un abrazo... 👬",
+    "txt_grupo": "@user abraza a sus mejores amigos 👬",
+    "txt_mencion": "@user le dio un fuerte abrazo a @target 👬❤️"
+  },
   "golpe": {
     "search": "anime slap",
+    "emoji": "👊",
     "txt_solo": "@user se golpeó solito... 👊",
     "txt_grupo": "@user está repartiendo golpes a todos! 👊💢",
     "txt_mencion": "@user le dio un golpe a @target! 👊🔥"
   },
+  "patada": {
+    "search": "anime kick",
+    "emoji": "🦶",
+    "txt_solo": "@user patea el aire... 🦶",
+    "txt_grupo": "@user entró pateando a todo el grupo! 🦶💥",
+    "txt_mencion": "@user le dio una patada voladora a @target! 🦶🔥"
+  },
   "matar": {
     "search": "anime kill",
-    "txt_solo": "@user está pensando en algo oscuro... 🔪",
+    "emoji": "💀",
+    "txt_solo": "@user está planeando un crimen... 🔪",
     "txt_grupo": "@user eliminó a todo el grupo! 💀",
     "txt_mencion": "@user aniquiló a @target! ⚰️"
+  },
+  "reir": {
+    "search": "anime laugh",
+    "emoji": "😂",
+    "txt_solo": "@user se ríe solo... 😂",
+    "txt_grupo": "@user se ríe de todos ustedes! 😂💀",
+    "txt_mencion": "@user se está burlando de @target 😂"
+  },
+  "triste": {
+    "search": "anime cry",
+    "emoji": "😭",
+    "txt_solo": "@user está llorando... 😭",
+    "txt_grupo": "@user se puso triste por culpa del grupo 💔",
+    "txt_mencion": "@user está llorando por culpa de @target 😭💔"
+  },
+  "enojado": {
+    "search": "anime angry",
+    "emoji": "😡",
+    "txt_solo": "@user está furioso! 💢",
+    "txt_grupo": "@user está enojado con todo el grupo 💢😤",
+    "txt_mencion": "@user está muy enojado con @target 😡"
+  },
+  "saludo": {
+    "search": "anime wave",
+    "emoji": "👋",
+    "txt_solo": "@user saluda a la nada... 👋",
+    "txt_grupo": "¡Hola grupo! 👋 @user dice hola.",
+    "txt_mencion": "@user está saludando a @target 👋✨"
+  },
+  "bailar": {
+    "search": "anime dance",
+    "emoji": "💃",
+    "txt_solo": "@user baila con flow ✨",
+    "txt_grupo": "¡Fiesta! @user puso a bailar a todos 🕺",
+    "txt_mencion": "@user baila junto a @target 💃🕺"
+  },
+  "acariciar": {
+    "search": "anime pat",
+    "emoji": "😊",
+    "txt_solo": "@user se acaricia el pelo... ✨",
+    "txt_grupo": "@user quiere darle mimos a todos 🤗",
+    "txt_mencion": "@user acaricia con ternura a @target ✨"
+  },
+  "morder": {
+    "search": "anime bite",
+    "emoji": "🦷",
+    "txt_solo": "@user se muerde las uñas... 😬",
+    "txt_grupo": "¡Cuidado! @user quiere morder a alguien 🦷",
+    "txt_mencion": "@user le dio un mordisco a @target 🦷💖"
+  },
+  "lamer": {
+    "search": "anime lick",
+    "emoji": "👅",
+    "txt_solo": "@user... ¿qué haces? 👅",
+    "txt_grupo": "@user quiere lamer a todo el grupo 👅✨",
+    "txt_mencion": "@user le dio una lamiidita a @target 👅🔥"
+  },
+  "dormir": {
+    "search": "anime sleep",
+    "emoji": "😴",
+    "txt_solo": "@user se durmió... 💤",
+    "txt_grupo": "@user se aburrió y se durmió 💤",
+    "txt_mencion": "@user se durmió encima de @target 😴"
+  },
+  "comer": {
+    "search": "anime eat",
+    "emoji": "🍔",
+    "txt_solo": "@user come solito... 🍔",
+    "txt_grupo": "@user invitó comida para todos! 🍕",
+    "txt_mencion": "@user le da de comer a @target 🍰"
+  },
+  "asustar": {
+    "search": "anime scare",
+    "emoji": "😱",
+    "txt_solo": "@user se asustó solo! 😱",
+    "txt_grupo": "@user asustó a todo el grupo! 👻",
+    "txt_mencion": "@user asustó a @target! 😱🔥"
+  },
+  "disparar": {
+    "search": "anime shoot",
+    "emoji": "🔫",
+    "txt_solo": "@user carga su arma... 🔫",
+    "txt_grupo": "@user le disparó a todos! 🔫💀",
+    "txt_mencion": "@user le disparó a @target 🔫🎯"
+  },
+  "correr": {
+    "search": "anime run",
+    "emoji": "🏃",
+    "txt_solo": "@user huye despavorido! 🏃",
+    "txt_grupo": "@user corre hacia el grupo 🏃💨",
+    "txt_mencion": "@user persigue a @target 🏃‍♂️💨"
+  },
+  "mirar": {
+    "search": "anime stare",
+    "emoji": "👀",
+    "txt_solo": "@user observa el horizonte... 👀",
+    "txt_grupo": "@user los está vigilando... 👀🔍",
+    "txt_mencion": "@user mira fijamente a @target 👀"
+  },
+  "asombro": {
+    "search": "anime wow",
+    "emoji": "😲",
+    "txt_solo": "@user quedó en shock! 😲",
+    "txt_grupo": "¡Todo el grupo quedó impactado! 😲✨",
+    "txt_mencion": "@user se asombró por lo que hizo @target 😲🔥"
+  },
+  "tímido": {
+    "search": "anime blush",
+    "emoji": "😊",
+    "txt_solo": "@user está muy rojo... 😊",
+    "txt_grupo": "@user se puso tímido ante todos 😊",
+    "txt_mencion": "@user se sonrojó por culpa de @target 😊💕"
   }
 }
