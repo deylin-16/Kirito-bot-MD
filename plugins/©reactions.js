@@ -13,7 +13,7 @@ let handler = async (m, { conn, command }) => {
         'kiss': 'beso', 'kiss2': 'beso2', 'kiss3': 'beso3',
         'hug': 'abrazo', 'hug2': 'abrazo2', 
         'slap': 'golpe', 'kill': 'matar', 'pat': 'acariciar', 
-        'dance': 'bailar', 'patada', 'laugh': 'reir',
+        'dance': 'bailar', 'patada': 'patada', 'laugh': 'reir',
         'cry': 'triste', 'sad': 'triste', 'angry': 'enojado', 
         'wave': 'saludo', 'bite': 'morder', 'lick': 'lamer', 
         'sleep': 'dormir', 'eat': 'comer', 'scare': 'asustar', 
